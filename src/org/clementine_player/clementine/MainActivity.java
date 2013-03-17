@@ -1,5 +1,7 @@
 package org.clementine_player.clementine;
 
+import org.clementine_player.clementine.analyzers.BaseAnalyzer;
+import org.clementine_player.clementine.analyzers.BlockAnalyzer;
 import org.clementine_player.clementine.playback.PlaybackService;
 import org.clementine_player.clementine.playback.PlaybackService.PlaybackBinder;
 import org.clementine_player.clementine.playback.Stream;
@@ -8,37 +10,44 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.media.audiofx.Visualizer;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
-import android.util.Log;
+import android.view.SurfaceView;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 
 public class MainActivity 
     extends FragmentActivity
-    implements Stream.Listener {
+    implements Stream.Listener,
+               PlaybackService.VisualizerListener {
   private static final String TAG = "MainActivity";
   
   private ImageButton play_button_;
   private ImageButton pause_button_;
   private ImageButton stop_button_;
   private ProgressBar buffering_bar_;
+  private SurfaceView analyzer_view_;
+  
+  private BaseAnalyzer analyzer_;
   
   private Stream.State state_;
-  private PlaybackBinder playback_service_;
+  private PlaybackService playback_service_;
   private ServiceConnection playback_connection_ = new ServiceConnection() {
     @Override
     public void onServiceConnected(ComponentName name, IBinder binder) {
-      playback_service_ = (PlaybackBinder) binder;
-      playback_service_.AddListener(MainActivity.this);
+      playback_service_ = ((PlaybackBinder) binder).GetService();
+      playback_service_.AddStreamListener(MainActivity.this);
+      playback_service_.AddVisualizerListener(MainActivity.this);
     }
 
     @Override
     public void onServiceDisconnected(ComponentName arg0) {
-      playback_service_.RemoveListener(MainActivity.this);
+      playback_service_.RemoveStreamListener(MainActivity.this);
+      playback_service_.RemoveVisualizerListener(MainActivity.this);
       playback_service_ = null;
     }
   };
@@ -53,6 +62,9 @@ public class MainActivity
     pause_button_ = (ImageButton) findViewById(R.id.pause);
     stop_button_ = (ImageButton) findViewById(R.id.stop);
     buffering_bar_ = (ProgressBar) findViewById(R.id.buffering_bar);
+    analyzer_view_ = (SurfaceView) findViewById(R.id.analyzer);
+    
+    analyzer_ = new BlockAnalyzer(analyzer_view_.getHolder());
     
     // Create the browser fragment.
     if (saved_instance_state == null) {
@@ -137,5 +149,10 @@ public class MainActivity
   
   public void NextClicked(View button) {
     // TODO
+  }
+
+  @Override
+  public void UpdateFft(byte[] fft) {
+    analyzer_.UpdateFft(fft);
   }
 }

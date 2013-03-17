@@ -1,10 +1,10 @@
 package org.clementine_player.clementine;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import org.clementine_player.clementine.playback.PlaybackService;
+import org.clementine_player.clementine.playback.PlaybackService.PlaybackBinder;
 import org.clementine_player.clementine.providers.ListItem;
 import org.clementine_player.clementine.providers.ProviderInterface;
 
@@ -14,7 +14,6 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.support.v4.app.FragmentTransaction;
 import android.support.v4.app.ListFragment;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.Loader;
@@ -161,8 +160,8 @@ public class ProviderBrowserFragment
       public void onServiceConnected(ComponentName name, IBinder service) {
         Log.i("ServiceConnection", "Connected");
         
-        PlaybackService.PlaybackBinder playback_service =
-            (PlaybackService.PlaybackBinder) service;
+        PlaybackService playback_service =
+            ((PlaybackBinder) service).GetService();
         playback_service.StartNewSong(item.media_uri_);
       }
     };

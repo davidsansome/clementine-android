@@ -11,43 +11,43 @@ import org.clementine_player.clementine.providers.ProviderInterface;
 
 import android.app.Service;
 import android.content.Intent;
+import android.media.audiofx.Visualizer;
 import android.os.Binder;
 import android.os.IBinder;
 import android.support.v4.content.Loader;
 import android.support.v4.content.Loader.OnLoadCompleteListener;
+import android.util.Log;
 
 public class PlaybackService
     extends Service
-    implements Stream.Listener {
+    implements Stream.Listener,
+               Visualizer.OnDataCaptureListener {
   public class PlaybackBinder extends Binder {
-    public void StartNewSong(URI uri) {
-      PlaybackService.this.StartNewSong(uri);
-    }
-    
-    public void PlayPause() {
-      PlaybackService.this.PlayPause();
-    }
-    
-    public void Stop() {
-      PlaybackService.this.Stop();
-    }
-    
-    public void AddListener(Stream.Listener listener) {
-      PlaybackService.this.AddListener(listener);
-    }
-    
-    public void RemoveListener(Stream.Listener listener) {
-      PlaybackService.this.RemoveListener(listener);
+    public PlaybackService GetService() {
+      return PlaybackService.this;
     }
   }
   
-  private List<Stream.Listener> listeners_;
+  public interface VisualizerListener {
+    void UpdateFft(byte[] fft);
+  }
+
+  private static final String TAG = "PlaybackService";
+  
+  private List<Stream.Listener> stream_listeners_;
+  private List<VisualizerListener> visualizer_listeners_;
+  private Visualizer current_visualizer_;
   private Stream current_stream_;
-  private long fade_duration_msec_ = 2000L;  // TODO(dsansome): configurable.
+  
+  // TODO(dsansome): make these configurable.
+  private long fade_duration_msec_ = 2000L;
+  private int visualizer_capture_size_ = 128;
+  private int visualizer_update_interval_mhz_ = 20 * 1000;  // 20 Hz
   
   @Override
   public void onCreate() {
-    listeners_ = new ArrayList<Stream.Listener>();
+    stream_listeners_ = new ArrayList<Stream.Listener>();
+    visualizer_listeners_ = new ArrayList<VisualizerListener>();
   }
   
   public void Stop() {
@@ -96,11 +96,19 @@ public class PlaybackService
   }
   
   private void SwapStream(Stream new_stream) {
+    // Stop the current stream.
     if (current_stream_ != null) {
       current_stream_.RemoveListener(this);
       current_stream_.FadeOutAndRelease(fade_duration_msec_);
     }
     
+    // Remove the current visualizer.
+    if (current_visualizer_ != null) {
+      current_visualizer_.release();
+      current_visualizer_ = null;
+    }
+    
+    // Set the new stream.
     current_stream_ = new_stream;
     
     if (current_stream_ != null) {
@@ -108,18 +116,66 @@ public class PlaybackService
     }
   }
   
-  public void AddListener(Listener listener) {
-    listeners_.add(listener);
+  public void AddStreamListener(Listener listener) {
+    stream_listeners_.add(listener);
   }
   
-  public void RemoveListener(Listener listener) {
-    listeners_.remove(listener);
+  public void RemoveStreamListener(Listener listener) {
+    stream_listeners_.remove(listener);
   }
 
   @Override
   public void StreamStateChanged(Stream.State state) {
-    for (Stream.Listener listener : listeners_) {
+    for (Stream.Listener listener : stream_listeners_) {
       listener.StreamStateChanged(state);
     }
+    
+    if (state == Stream.State.STARTED && current_visualizer_ == null &&
+        !visualizer_listeners_.isEmpty()) {
+      CreateVisualizer();
+    }
+  }
+  
+  private void CreateVisualizer() {
+    current_visualizer_ = current_stream_.CreateVisualizer();
+    current_visualizer_.setCaptureSize(visualizer_capture_size_);
+    current_visualizer_.setDataCaptureListener(
+        this, visualizer_update_interval_mhz_, false, true);
+    current_visualizer_.setEnabled(true);
+    Log.d(TAG, Visualizer.getCaptureSizeRange()[0] + ", " + Visualizer.getCaptureSizeRange()[1]);
+    Log.d(TAG, "" + Visualizer.getMaxCaptureRate());
+  }
+  
+  public void AddVisualizerListener(VisualizerListener listener) {
+    visualizer_listeners_.add(listener);
+    
+    if (current_visualizer_ == null &&
+        current_stream_ != null &&
+        current_stream_.current_state() != Stream.State.PREPARING) {
+      CreateVisualizer();
+    }
+  }
+  
+  public void RemoveVisualizerListener(VisualizerListener listener) {
+    visualizer_listeners_.remove(listener);
+    
+    if (current_visualizer_ != null && visualizer_listeners_.isEmpty()) {
+      current_visualizer_.release();
+      current_visualizer_ = null;
+    }
+  }
+
+  @Override
+  public void onFftDataCapture(
+      Visualizer visualizer, byte[] fft, int sampling_rate) {
+    Log.d(TAG, "Got fft " + fft.length + ", " + sampling_rate);
+    for (VisualizerListener listener : visualizer_listeners_) {
+      listener.UpdateFft(fft);
+    }
+  }
+
+  @Override
+  public void onWaveFormDataCapture(
+      Visualizer visualizer, byte[] waveform, int samplingRate) {
   }
 }

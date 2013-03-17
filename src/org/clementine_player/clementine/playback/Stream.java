@@ -12,6 +12,7 @@ import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnPreparedListener;
+import android.media.audiofx.Visualizer;
 import android.util.Log;
 
 public class Stream
@@ -247,5 +248,13 @@ public class Stream
         FadeTo(0.0f, duration_msec);
         break;
     }
+  }
+  
+  public Visualizer CreateVisualizer() {
+    return new Visualizer(player_.getAudioSessionId());
+  }
+  
+  public State current_state() {
+    return current_state_;
   }
 }

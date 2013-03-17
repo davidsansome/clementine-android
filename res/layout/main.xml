@@ -45,7 +45,6 @@
 						    android:layout_toRightOf="@+id/previous"
 						    android:contentDescription="@string/label_pause"
 						    android:src="@android:drawable/ic_media_pause"
-						    android:visibility="invisible"
 						    android:onClick="PauseClicked" />
 						
 						<ImageButton
@@ -56,7 +55,6 @@
 						    android:layout_toRightOf="@+id/previous"
 						    android:contentDescription="@string/label_play"
 						    android:src="@android:drawable/ic_media_play"
-						    android:visibility="visible"
 						    android:onClick="PlayClicked" />
 						
 						<ImageButton
@@ -86,6 +84,13 @@
 						    android:layout_height="wrap_content"
 						    android:layout_alignParentTop="true"
 						    android:layout_toRightOf="@+id/next" />
+						
+						<SurfaceView 
+						    android:id="@+id/analyzer"
+						    android:layout_width="match_parent"
+						    android:layout_height="50dp"
+						    android:layout_alignParentTop="true"
+						    android:layout_toRightOf="@+id/buffering_bar" />
 						
 				</RelativeLayout>
 
