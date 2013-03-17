@@ -16,7 +16,7 @@ import org.json.JSONObject;
 
 import android.util.Base64;
 
-public class Client {
+public class ApiClient {
   private String service_name_;
   
   public static final String CHANNEL_LIST_URL =
@@ -25,7 +25,7 @@ public class Client {
   public static final String API_USERNAME = "ephemeron";
   public static final String API_PASSWORD = "dayeiph0ne@pp";
   
-  public Client(String service_name) {
+  public ApiClient(String service_name) {
     service_name_ = service_name;
   }
   
@@ -75,5 +75,9 @@ public class Client {
     }
     
     return ret;
+  }
+
+  public String service_name() {
+    return service_name_;
   }
 }

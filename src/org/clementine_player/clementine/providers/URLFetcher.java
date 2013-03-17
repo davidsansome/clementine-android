@@ -1,6 +1,7 @@
 package org.clementine_player.clementine.providers;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.HttpURLConnection;
@@ -16,6 +17,9 @@ import android.util.Log;
 
 public class URLFetcher {
   private URLConnection connection_;
+  private String charset_;
+  
+  private static final String TAG = "URLFetcher";
 
   public URLFetcher(URL url) throws ProviderException {
     try {
@@ -26,16 +30,18 @@ public class URLFetcher {
     
     connection_.setRequestProperty(
         "User-Agent", Application.instance().user_agent());
+    
+    Log.i(TAG, "Fetching URL " + url);
   }
   
   public URLConnection connection() {
     return connection_;
   }
   
-  public String GetData() throws ProviderException {
+  public InputStream GetStream() throws ProviderException {
+    HttpURLConnection http_connection = (HttpURLConnection) connection_;
+    
     try {
-      HttpURLConnection http_connection = (HttpURLConnection) connection_;
-      
       if (http_connection.getResponseCode() != 200) {
         throw new ProviderException(
             "Unexpected HTTP response code " +
@@ -45,22 +51,32 @@ public class URLFetcher {
       }
       
       String content_type = connection_.getHeaderField("Content-Type");
-      String charset = null;
       for (String param : content_type.replace(" ", "").split(";")) {
         if (param.startsWith("charset=")) {
-          charset = param.split("=", 2)[1];
+          charset_ = param.split("=", 2)[1];
           break;
         }
       }
+    
+      return connection_.getInputStream();
+    } catch (IOException e) {
+      throw new ProviderException(
+          "Failed to get input stream for URL " + connection_.getURL(), e);
+    } 
+  }
+  
+  public String GetData() throws ProviderException {
+    InputStream stream = GetStream();
       
+    try {
       char[] buffer = new char[4096];
       StringBuilder out = new StringBuilder();
     
       Reader reader;
-      if (charset != null) {
-        reader = new InputStreamReader(connection_.getInputStream(), charset);
+      if (charset_ != null) {
+        reader = new InputStreamReader(stream, charset_);
       } else {
-        reader = new InputStreamReader(connection_.getInputStream());
+        reader = new InputStreamReader(stream);
       }
       
       try {
@@ -73,7 +89,6 @@ public class URLFetcher {
       } finally {
         reader.close();
       }
-      Log.i("URLFetcher", "Data: " + out.toString());
       return out.toString();
     } catch (IOException e) {
       throw new ProviderException(

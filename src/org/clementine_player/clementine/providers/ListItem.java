@@ -1,16 +1,20 @@
 package org.clementine_player.clementine.providers;
 
+import java.net.URI;
+import java.net.URL;
+
 public class ListItem {
-  public String text_;
-  public String url_;
+  // Lines of text to display in the list view. 
+  public String text1_;
+  public String text2_;
+  
+  // If this item is a song, the URI that will be used to resolve to the actual
+  // audio content.
+  public URI media_uri_;
+  
+  // The URL to an icon to display in the list view.
+  public URL image_url_;
+  
   public boolean has_children_;
-  
-  public ListItem() {
-  }
-  
-  public ListItem(String text, String url, boolean has_children) {
-    text_ = text;
-    url_ = url;
-    has_children_ = has_children;
-  }
+  public String key_;
 }

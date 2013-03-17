@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="custom_rules" default="help">
+  <target name="-pre-build">
+    <exec executable="protoc">
+      <arg value="--java_out=gen" />
+      <arg value="--proto_path=src" />
+      <arg value="src/org/clementine_player/clementine/PB.proto" />
+    </exec>
+  </target>
+</project>

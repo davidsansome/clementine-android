@@ -1,0 +1,57 @@
+package clementine;
+
+option java_package = "org.clementine_player.clementine";
+option java_outer_classname = "PB";
+
+message Song {
+  enum Type {
+    UNKNOWN = 0;
+    ASF = 1;
+    FLAC = 2;
+    MP4 = 3;
+    MPC = 4;
+    MPEG = 5;
+    OGGFLAC = 6;
+    OGGSPEEX = 7;
+    OGGVORBIS = 8;
+    AIFF = 9;
+    WAV = 10;
+    TRUEAUDIO = 11;
+    CDDA = 12;
+    OGGOPUS = 13;
+    STREAM = 99;
+  }
+
+  optional bool valid = 1;
+  optional string title = 2;
+  optional string album = 3;
+  optional string artist = 4;
+  optional string albumartist = 5;
+  optional string composer = 6;
+  optional int32 track = 7;
+  optional int32 disc = 8;
+  optional float bpm = 9;
+  optional int32 year = 10;
+  optional string genre = 11;
+  optional string comment = 12;
+  optional bool compilation = 13;
+  optional float rating = 14;
+  optional int32 playcount = 15;
+  optional int32 skipcount = 16;
+  optional int32 lastplayed = 17;
+  optional int32 score = 18;
+  optional uint64 length_nanosec = 19;
+  optional int32 bitrate = 20;
+  optional int32 samplerate = 21;
+  optional string uri = 22;
+  optional string basefilename = 23;
+  optional int32 mtime = 24;
+  optional int32 ctime = 25;
+  optional int32 filesize = 26;
+  optional bool suspicious_tags = 27;
+  optional string art_automatic = 28;
+  optional Type type = 29;
+  optional string etag = 30;
+  optional string performer = 31;
+  optional string grouping = 32;
+}
