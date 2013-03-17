@@ -1,30 +1,39 @@
 package org.clementine_player.clementine.playback;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import android.animation.Animator;
 import android.animation.Animator.AnimatorListener;
 import android.animation.ValueAnimator;
 import android.animation.ValueAnimator.AnimatorUpdateListener;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.util.Log;
 
-enum State {
-  // Valid for:  current  desired
-  PREPARING, //  yes      no
-  PREPARED,  //  yes      yes
-  STARTED,   //  yes      yes
-  PAUSED,    //  yes      yes
-  COMPLETED, //  yes      no
-}
-
 public class Stream
-    implements OnPreparedListener, OnCompletionListener {
+    implements OnPreparedListener,
+               OnCompletionListener {
+  public enum State {
+    // Valid for:  current  desired
+    PREPARING, //  yes      no
+    PREPARED,  //  yes      yes
+    STARTED,   //  yes      yes
+    PAUSED,    //  yes      yes
+    COMPLETED, //  yes      no
+  }
+  
+  public interface Listener {
+    public void StreamStateChanged(State state);
+  }
+  
   private MediaPlayer player_;
   private State current_state_;
   private State desired_state_;
+  private List<Listener> listeners_;
   
   private float current_volume_;
   private boolean fade_in_desired_;
@@ -36,6 +45,7 @@ public class Stream
   private String log_tag_;
   
   public Stream(String url) {
+    listeners_ = new ArrayList<Listener>();
     current_state_ = State.PREPARING;
     desired_state_ = State.PREPARED;
     current_volume_ = 1.0f;
@@ -46,6 +56,7 @@ public class Stream
     Log.i(log_tag_, "New stream for " + url);
     
     player_ = new MediaPlayer();
+    player_.setAudioStreamType(AudioManager.STREAM_MUSIC);
     player_.setOnPreparedListener(this);
     player_.setOnCompletionListener(this);
     try {
@@ -56,10 +67,26 @@ public class Stream
     player_.prepareAsync();
   }
   
+  public void AddListener(Listener listener) {
+    listeners_.add(listener);
+    listener.StreamStateChanged(current_state_);
+  }
+  
+  public void RemoveListener(Listener listener) {
+    listeners_.remove(listener);
+  }
+  
+  private void UpdateAllListeners() {
+    for (Listener listener : listeners_) {
+      listener.StreamStateChanged(current_state_);
+    }
+  }
+  
   private void SetCurrentState(State state) {
     Log.d(log_tag_, "Current state " + current_state_.name() +
                     " -> " + state.name());
     current_state_ = state;
+    UpdateAllListeners();
   }
   
   private void SetDesiredState(State state) {
@@ -133,6 +160,14 @@ public class Stream
         player_.pause();
         SetCurrentState(State.PAUSED);
         break;
+    }
+  }
+  
+  public void PlayPause() {
+    if (current_state_ == State.STARTED) {
+      Pause();
+    } else {
+      Play();
     }
   }
   

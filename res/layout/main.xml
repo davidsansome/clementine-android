@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="horizontal"
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
     android:baselineAligned="false">
 
     <FrameLayout
@@ -11,11 +11,84 @@
         android:layout_width="0dp"
         android:layout_height="match_parent" />
 
-    <FrameLayout
-        android:id="@+id/playlist"
+    <LinearLayout
+        android:orientation="vertical"
         android:layout_weight="2"
-        android:layout_width="0dp"
-        android:layout_height="match_parent" />
+		    android:layout_width="0dp"
+		    android:layout_height="match_parent">
+    
+		    <!-- <FrameLayout
+		        android:id="@+id/playlist"
+		        android:layout_width="match_parent"
+		        android:layout_height="wrap_content" /> -->
 
+		    <RelativeLayout
+						android:layout_width="match_parent"
+						android:layout_height="wrap_content"
+						android:orientation="vertical" >
+						
+						<ImageButton
+						    android:id="@+id/previous"
+						    android:layout_width="wrap_content"
+						    android:layout_height="wrap_content"
+						    android:layout_alignParentLeft="true"
+						    android:layout_alignParentTop="true"
+						    android:contentDescription="@string/label_previous"
+						    android:src="@android:drawable/ic_media_previous"
+						    android:onClick="PreviousClicked" />
+						
+						<ImageButton
+						    android:id="@+id/pause"
+						    android:layout_width="wrap_content"
+						    android:layout_height="wrap_content"
+						    android:layout_alignParentTop="true"
+						    android:layout_toRightOf="@+id/previous"
+						    android:contentDescription="@string/label_pause"
+						    android:src="@android:drawable/ic_media_pause"
+						    android:visibility="invisible"
+						    android:onClick="PauseClicked" />
+						
+						<ImageButton
+						    android:id="@+id/play"
+						    android:layout_width="wrap_content"
+						    android:layout_height="wrap_content"
+						    android:layout_alignParentTop="true"
+						    android:layout_toRightOf="@+id/previous"
+						    android:contentDescription="@string/label_play"
+						    android:src="@android:drawable/ic_media_play"
+						    android:visibility="visible"
+						    android:onClick="PlayClicked" />
+						
+						<ImageButton
+						    android:id="@+id/stop"
+						    android:layout_width="wrap_content"
+						    android:layout_height="wrap_content"
+						    android:layout_alignParentTop="true"
+						    android:layout_toRightOf="@+id/play"
+						    android:contentDescription="@string/label_stop"
+						    android:src="@drawable/ic_media_stop"
+						    android:onClick="StopClicked" />
+						
+						<ImageButton
+						    android:id="@+id/next"
+						    android:layout_width="wrap_content"
+						    android:layout_height="wrap_content"
+						    android:layout_alignParentTop="true"
+						    android:layout_toRightOf="@+id/stop"
+						    android:contentDescription="@string/label_next"
+						    android:src="@android:drawable/ic_media_next"
+						    android:onClick="NextClicked" />
+						
+						<ProgressBar
+						    android:id="@+id/buffering_bar"
+						    style="?android:attr/progressBarStyle"
+						    android:layout_width="wrap_content"
+						    android:layout_height="wrap_content"
+						    android:layout_alignParentTop="true"
+						    android:layout_toRightOf="@+id/next" />
+						
+				</RelativeLayout>
+
+		</LinearLayout>
 </LinearLayout>
 
