@@ -152,7 +152,7 @@ public class MainActivity
   }
 
   @Override
-  public void UpdateFft(byte[] fft) {
+  public void UpdateFft(int[] fft) {
     analyzer_.UpdateFft(fft);
   }
 }

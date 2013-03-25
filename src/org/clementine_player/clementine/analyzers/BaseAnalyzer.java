@@ -3,9 +3,6 @@ package org.clementine_player.clementine.analyzers;
 import org.clementine_player.clementine.playback.PlaybackService;
 
 import android.graphics.Canvas;
-import android.media.audiofx.Visualizer;
-import android.os.SystemClock;
-import android.util.Log;
 import android.view.SurfaceHolder;
 
 public abstract class BaseAnalyzer
@@ -18,7 +15,13 @@ public abstract class BaseAnalyzer
   private boolean stop_;
   
   private SurfaceHolder holder_;
-  private byte[] data_;
+  
+  private Object data_mutex_;
+  private int[] data_;
+  private boolean data_updated_;
+  
+  private int current_width_;
+  private int current_height_;
   
   public BaseAnalyzer(SurfaceHolder holder) {
     active_ = false;
@@ -29,7 +32,7 @@ public abstract class BaseAnalyzer
     holder_ = holder;
     holder_.addCallback(this);
     
-    data_ = new byte[0];
+    data_mutex_ = new Object();
     
     // If the surface is already created, start right away.
     if (holder_.getSurface() != null) {
@@ -41,11 +44,14 @@ public abstract class BaseAnalyzer
     @Override
     public void run() {
       while (true) {
-        // Sleep while the analyzer is paused.
-        while (!active_ && !stop_) {
-          try {
-            thread_.wait();
-          } catch (InterruptedException e) {
+        // Wait until both data and surface are available.
+        synchronized (data_mutex_) {
+          while (data_ == null || !active_) {
+            try {
+              data_mutex_.wait();
+            } catch (InterruptedException e) {
+              break;
+            }
           }
         }
         
@@ -54,24 +60,15 @@ public abstract class BaseAnalyzer
           return;
         }
         
-        long start_time = SystemClock.uptimeMillis();
-        
         // Draw on the canvas.
-        Canvas canvas = holder_.lockCanvas();
-        if (canvas != null) {
-          synchronized (data_) {
-            Update(data_, canvas);
-          }
-          holder_.unlockCanvasAndPost(canvas);
-        }
-        
-        // Wait until the next update.
-        // TODO(dsansome): wait until data_ gets updated.
-        long elapsed_time = SystemClock.uptimeMillis() - start_time;
-        if (elapsed_time >= 0 && elapsed_time < 100) {
-          try {
-            Thread.sleep(100 - elapsed_time);
-          } catch (InterruptedException e) {
+        synchronized (data_mutex_) {
+          if (data_ != null && data_updated_) {
+            Canvas canvas = holder_.lockCanvas();
+            if (canvas != null) {
+              Update(data_, canvas);
+              data_updated_ = false;
+              holder_.unlockCanvasAndPost(canvas);
+            }
           }
         }
       }
@@ -81,13 +78,28 @@ public abstract class BaseAnalyzer
   @Override
   public void surfaceChanged(
       SurfaceHolder holder, int format, int width, int height) {
+    if (current_height_ != height || current_width_ != width) {
+      current_height_ = height;
+      current_width_ = width;
+      
+      SizeChanged(width, height);
+      
+      synchronized (data_mutex_) {
+        if (data_ != null) {
+          Canvas canvas = holder_.lockCanvas();
+          if (canvas != null) {
+            Update(data_, canvas);
+            holder_.unlockCanvasAndPost(canvas);
+          }
+        }
+      }
+    }
   }
   
   @Override
   public void surfaceCreated(SurfaceHolder holder) {
     // Start the thread updating the surface.
     active_ = true;
-    thread_.interrupt();
   }
   
   @Override
@@ -107,11 +119,18 @@ public abstract class BaseAnalyzer
   }
   
   @Override
-  public void UpdateFft(byte[] data) {
-    synchronized (data_) {
+  public void UpdateFft(int[] data) {
+    synchronized (data_mutex_) {
       data_ = data;
+      data_updated_ = true;
+      data_mutex_.notify();
     }
   }
   
-  protected abstract void Update(byte[] fft, Canvas canvas);
+  protected abstract void SizeChanged(int width, int height);
+  protected abstract void Update(int[] fft, Canvas canvas);
+  
+  protected int update_interval_msec() {
+    return 1000 / PlaybackService.kVisualizerUpdateIntervalHz;
+  }
 }

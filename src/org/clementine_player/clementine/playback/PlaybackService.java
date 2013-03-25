@@ -29,7 +29,7 @@ public class PlaybackService
   }
   
   public interface VisualizerListener {
-    void UpdateFft(byte[] fft);
+    void UpdateFft(int[] amplitudes);
   }
 
   private static final String TAG = "PlaybackService";
@@ -40,9 +40,9 @@ public class PlaybackService
   private Stream current_stream_;
   
   // TODO(dsansome): make these configurable.
-  private long fade_duration_msec_ = 2000L;
-  private int visualizer_capture_size_ = 128;
-  private int visualizer_update_interval_mhz_ = 20 * 1000;  // 20 Hz
+  public static final long kFadeDurationMsec = 2000L;
+  public static final int kVisualizerCaptureSize = 128;
+  public static final int kVisualizerUpdateIntervalHz = 20;  // 20
   
   @Override
   public void onCreate() {
@@ -91,7 +91,7 @@ public class PlaybackService
   
   public void StartNewSong(String url) {
     SwapStream(new Stream(url));
-    current_stream_.FadeIn(fade_duration_msec_);
+    current_stream_.FadeIn(kFadeDurationMsec);
     current_stream_.Play();
   }
   
@@ -99,7 +99,7 @@ public class PlaybackService
     // Stop the current stream.
     if (current_stream_ != null) {
       current_stream_.RemoveListener(this);
-      current_stream_.FadeOutAndRelease(fade_duration_msec_);
+      current_stream_.FadeOutAndRelease(kFadeDurationMsec);
     }
     
     // Remove the current visualizer.
@@ -138,9 +138,9 @@ public class PlaybackService
   
   private void CreateVisualizer() {
     current_visualizer_ = current_stream_.CreateVisualizer();
-    current_visualizer_.setCaptureSize(visualizer_capture_size_);
+    current_visualizer_.setCaptureSize(kVisualizerCaptureSize);
     current_visualizer_.setDataCaptureListener(
-        this, visualizer_update_interval_mhz_, false, true);
+        this, kVisualizerUpdateIntervalHz * 1000, false, true);
     current_visualizer_.setEnabled(true);
     Log.d(TAG, Visualizer.getCaptureSizeRange()[0] + ", " + Visualizer.getCaptureSizeRange()[1]);
     Log.d(TAG, "" + Visualizer.getMaxCaptureRate());
@@ -168,9 +168,25 @@ public class PlaybackService
   @Override
   public void onFftDataCapture(
       Visualizer visualizer, byte[] fft, int sampling_rate) {
-    Log.d(TAG, "Got fft " + fft.length + ", " + sampling_rate);
+    // The first two bytes in the array are the real components of the first
+    // and last frequency buckets (which we discard), followed by real,
+    // imaginary pairs for the rest of the frequency buckets.
+    if (fft.length <= 2) {
+      return;
+    }
+    
+    int[] amplitudes = new int[fft.length / 2 - 1];
+    for (int i=0 ; i<amplitudes.length ; ++i) {
+      int fft_index = 2 + i * 2;
+      byte real = fft[fft_index];
+      byte imaginary = fft[fft_index + 1];
+      
+      amplitudes[i] =
+          (int) Math.sqrt(Math.pow(real, 2.0) + Math.pow(imaginary, 2.0));
+    }
+    
     for (VisualizerListener listener : visualizer_listeners_) {
-      listener.UpdateFft(fft);
+      listener.UpdateFft(amplitudes);
     }
   }
 
