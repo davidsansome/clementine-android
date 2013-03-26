@@ -41,7 +41,7 @@ public class BlockAnalyzer extends BaseAnalyzer {
     row_scale_ = new int[rows_ + 1];
     for (int i=0 ; i<rows_ ; ++i) {
       row_scale_[i] =
-          (int) ((1.0 - Math.log10(i + 1) / Math.log10(rows_ + 1)) * 192);
+          (int) ((1.0 - Math.log10(i + 1) / Math.log10(rows_ + 1)) * 128);
       Log.i(TAG, "Row scale " + i + " is " + row_scale_[i]);
     }
     row_scale_[rows_] = 0;
@@ -64,8 +64,8 @@ public class BlockAnalyzer extends BaseAnalyzer {
     return Color.BLACK;
   }
   
-  private int ForegroundColour() {
-    return Color.RED;
+  private float[] ForegroundColourHSV() {
+    return new float[]{198f, 0.80f, 0.90f};
   }
   
   private Bitmap CreateBarBitmap() {
@@ -83,12 +83,15 @@ public class BlockAnalyzer extends BaseAnalyzer {
     rect.set(0, 0, ret.getWidth(), ret.getHeight());
     canvas.drawRect(rect, paint);
     
+    final float[] initial_hsv = ForegroundColourHSV();
+    
     // Draw each block.
     int y = 0;
     for (int i=0 ; i<rows_ ; ++i) {
-      int value = 128 +
-          (int) ((1.0 - Math.log10(i + 1) / Math.log10(rows_ + 2)) * 127);
-      paint.setARGB(255, value, 0, 0);
+      float[] hsv = initial_hsv.clone();
+      hsv[1] = (1.0f - (float)(i) / rows_) * initial_hsv[1];
+      
+      paint.setColor(Color.HSVToColor(hsv));
       rect.set(0, y, kBlockWidth, y + kBlockHeight);
       canvas.drawRect(rect, paint);
       
@@ -101,6 +104,8 @@ public class BlockAnalyzer extends BaseAnalyzer {
   private Bitmap[] CreateFadeBitmaps() {
     Rect rect = new Rect();
     Paint paint = new Paint();
+    
+    final float[] initial_hsv = ForegroundColourHSV();
     
     Bitmap[] ret = new Bitmap[kFadeSize];
     for (int i=0 ; i<kFadeSize ; ++i) {
@@ -115,9 +120,12 @@ public class BlockAnalyzer extends BaseAnalyzer {
       rect.set(0, 0, bitmap.getWidth(), bitmap.getHeight());
       canvas.drawRect(rect, paint);
       
-      double value = 1.0 - Math.log10(kFadeSize - i) / Math.log10(kFadeSize);
-      paint.setARGB(255, (int) (value * 128), 0, 0);
-      Log.i(TAG, "Creating fade " + i + " = " + value);
+      float[] hsv = initial_hsv.clone();
+      hsv[2] *= (float) ((1.0 - Math.log10(kFadeSize - i) / Math.log10(kFadeSize)));
+      
+      Log.d(TAG, "Fade " + i + " = " + hsv[2] + " initial " + initial_hsv[2]);
+
+      paint.setColor(Color.HSVToColor(hsv));
       
       // Draw each block
       for (int y=0 ; y<rows_ ; ++y) {
@@ -186,7 +194,7 @@ public class BlockAnalyzer extends BaseAnalyzer {
       }
     
       int pixel_y = y * (kBlockHeight + kBlockSpacing);
-      source_rect.set(0, pixel_y, kBlockWidth, height);
+      source_rect.set(0, 0, kBlockWidth, height - pixel_y);
       dest_rect.set(pixel_x, pixel_y, pixel_x + kBlockWidth, height);
       canvas.drawBitmap(bar_bitmap_, source_rect, dest_rect, null);
       
