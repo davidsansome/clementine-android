@@ -2,8 +2,12 @@ package org.clementine_player.clementine.analyzers;
 
 import org.clementine_player.clementine.playback.PlaybackService;
 
+import android.content.Context;
 import android.graphics.Canvas;
+import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.SurfaceHolder;
+import android.view.WindowManager;
 
 public abstract class BaseAnalyzer
     implements SurfaceHolder.Callback,
@@ -14,6 +18,7 @@ public abstract class BaseAnalyzer
   private boolean active_;
   private boolean stop_;
   
+  private Context context_;
   private SurfaceHolder holder_;
   
   private Object data_mutex_;
@@ -23,10 +28,12 @@ public abstract class BaseAnalyzer
   private int current_width_;
   private int current_height_;
   
-  public BaseAnalyzer(SurfaceHolder holder) {
+  public BaseAnalyzer(Context context, SurfaceHolder holder) {
     active_ = false;
     stop_ = false;
     thread_ = new Thread(new Worker());
+    
+    context_ = context;
     holder_ = holder;
     holder_.addCallback(this);
     
@@ -132,5 +139,16 @@ public abstract class BaseAnalyzer
   
   protected int update_interval_msec() {
     return 1000 / PlaybackService.kVisualizerUpdateIntervalHz;
+  }
+  
+  protected float screen_density() {
+    WindowManager window_manager =
+        (WindowManager) context_.getSystemService(Context.WINDOW_SERVICE);
+    DisplayMetrics metrics = new DisplayMetrics();
+    window_manager.getDefaultDisplay().getMetrics(metrics);
+    
+    Log.i(TAG, "Screen density is " + metrics.density);
+    
+    return metrics.density;
   }
 }

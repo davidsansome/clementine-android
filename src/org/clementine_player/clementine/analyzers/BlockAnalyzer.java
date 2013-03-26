@@ -1,5 +1,6 @@
 package org.clementine_player.clementine.analyzers;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -11,12 +12,16 @@ import android.view.SurfaceHolder;
 public class BlockAnalyzer extends BaseAnalyzer {
   private static final String TAG = "BlockAnalyzer";
   
-  private static final int kBlockWidth = 4;
-  private static final int kBlockHeight = 2;
-  private static final int kBlockSpacing = 1;
+  private static final int kBaseBlockWidth = 4;
+  private static final int kBaseBlockHeight = 2;
+  private static final int kBaseBlockSpacing = 1;
   private static final int kFadeSize = 90;
   private static final int kFallingLineRate = 1;
   private static final int kFadeIntensityRate = 1;
+  
+  private int block_width_;
+  private int block_height_;
+  private int block_spacing_;
   
   private int rows_;
   private int columns_;
@@ -27,16 +32,21 @@ public class BlockAnalyzer extends BaseAnalyzer {
   private Bitmap bar_bitmap_;
   private Bitmap[] fade_bitmaps_;
   
-  public BlockAnalyzer(SurfaceHolder holder) {
-    super(holder);
+  public BlockAnalyzer(Context context, SurfaceHolder holder) {
+    super(context, holder);
+    
+    final float density = screen_density();
+    block_width_ = (int) (density * kBaseBlockWidth);
+    block_height_ = (int) (density * kBaseBlockHeight);
+    block_spacing_ = (int) (density * kBaseBlockSpacing);
   }
   
   @Override
   protected void SizeChanged(int width, int height) {
     Log.i(TAG, "Size changed to " + width + "x" + height);
     
-    rows_ = (height + kBlockSpacing) / (kBlockHeight + kBlockSpacing);
-    columns_ = (width + kBlockSpacing) / (kBlockWidth + kBlockSpacing);
+    rows_ = (height + block_spacing_) / (block_height_ + block_spacing_);
+    columns_ = (width + block_spacing_) / (block_width_ + block_spacing_);
     
     row_scale_ = new int[rows_ + 1];
     for (int i=0 ; i<rows_ ; ++i) {
@@ -70,8 +80,8 @@ public class BlockAnalyzer extends BaseAnalyzer {
   
   private Bitmap CreateBarBitmap() {
     Bitmap ret = Bitmap.createBitmap(
-        kBlockWidth,
-        rows_ * (kBlockHeight + kBlockSpacing) - kBlockSpacing,
+        block_width_,
+        rows_ * (block_height_ + block_spacing_) - block_spacing_,
         Bitmap.Config.ARGB_8888);
     Canvas canvas = new Canvas(ret);
     
@@ -92,10 +102,10 @@ public class BlockAnalyzer extends BaseAnalyzer {
       hsv[1] = (1.0f - (float)(i) / rows_) * initial_hsv[1];
       
       paint.setColor(Color.HSVToColor(hsv));
-      rect.set(0, y, kBlockWidth, y + kBlockHeight);
+      rect.set(0, y, block_width_, y + block_height_);
       canvas.drawRect(rect, paint);
       
-      y += kBlockHeight + kBlockSpacing;
+      y += block_height_ + block_spacing_;
     }
     
     return ret;
@@ -110,8 +120,8 @@ public class BlockAnalyzer extends BaseAnalyzer {
     Bitmap[] ret = new Bitmap[kFadeSize];
     for (int i=0 ; i<kFadeSize ; ++i) {
       Bitmap bitmap = Bitmap.createBitmap(
-          kBlockWidth,
-          rows_ * (kBlockHeight + kBlockSpacing) - kBlockSpacing,
+          block_width_,
+          rows_ * (block_height_ + block_spacing_) - block_spacing_,
           Bitmap.Config.ARGB_8888);
       Canvas canvas = new Canvas(bitmap);
       
@@ -129,9 +139,9 @@ public class BlockAnalyzer extends BaseAnalyzer {
       for (int y=0 ; y<rows_ ; ++y) {
         rect.set(
             0,
-            y * (kBlockHeight + kBlockSpacing),
-            kBlockWidth,
-            y * (kBlockHeight + kBlockSpacing) + kBlockHeight);
+            y * (block_height_ + block_spacing_),
+            block_width_,
+            y * (block_height_ + block_spacing_) + block_height_);
         canvas.drawRect(rect, paint);
       }
       
@@ -142,7 +152,7 @@ public class BlockAnalyzer extends BaseAnalyzer {
 
   @Override
   protected void Update(int[] fft, Canvas canvas) {
-    final int height = canvas.getHeight();
+    final int height = rows_ * (block_height_ + block_spacing_) - block_spacing_;
     
     Rect source_rect = new Rect();
     Rect dest_rect = new Rect();
@@ -176,12 +186,12 @@ public class BlockAnalyzer extends BaseAnalyzer {
       
       if (fade_intensity_[x] > 0) {
         int fade_index = fade_intensity_[x] -= kFadeIntensityRate;
-        int fade_pixel_y = fade_pos_[x] * (kBlockHeight + kBlockSpacing);
+        int fade_pixel_y = fade_pos_[x] * (block_height_ + block_spacing_);
         
-        source_rect.set(0, 0, kBlockWidth, height - fade_pixel_y);
+        source_rect.set(0, 0, block_width_, height - fade_pixel_y);
         dest_rect.set(pixel_x,
                       fade_pixel_y,
-                      pixel_x + kBlockWidth,
+                      pixel_x + block_width_,
                       height);
         canvas.drawBitmap(
             fade_bitmaps_[fade_index], source_rect, dest_rect, null);
@@ -191,12 +201,12 @@ public class BlockAnalyzer extends BaseAnalyzer {
         fade_pos_[x] = rows_;
       }
     
-      int pixel_y = y * (kBlockHeight + kBlockSpacing);
-      source_rect.set(0, 0, kBlockWidth, height - pixel_y);
-      dest_rect.set(pixel_x, pixel_y, pixel_x + kBlockWidth, height);
+      int pixel_y = y * (block_height_ + block_spacing_);
+      source_rect.set(0, 0, block_width_, height - pixel_y);
+      dest_rect.set(pixel_x, pixel_y, pixel_x + block_width_, height);
       canvas.drawBitmap(bar_bitmap_, source_rect, dest_rect, null);
       
-      pixel_x += kBlockWidth + kBlockSpacing;
+      pixel_x += block_width_ + block_spacing_;
     }
   }
 }

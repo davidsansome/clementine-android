@@ -64,7 +64,7 @@ public class MainActivity
     buffering_bar_ = (ProgressBar) findViewById(R.id.buffering_bar);
     analyzer_view_ = (SurfaceView) findViewById(R.id.analyzer);
     
-    analyzer_ = new BlockAnalyzer(analyzer_view_.getHolder());
+    analyzer_ = new BlockAnalyzer(this, analyzer_view_.getHolder());
     
     // Create the browser fragment.
     if (saved_instance_state == null) {
