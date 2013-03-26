@@ -122,8 +122,6 @@ public class BlockAnalyzer extends BaseAnalyzer {
       
       float[] hsv = initial_hsv.clone();
       hsv[2] *= (float) ((1.0 - Math.log10(kFadeSize - i) / Math.log10(kFadeSize)));
-      
-      Log.d(TAG, "Fade " + i + " = " + hsv[2] + " initial " + initial_hsv[2]);
 
       paint.setColor(Color.HSVToColor(hsv));
       

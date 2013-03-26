@@ -27,8 +27,6 @@ public abstract class BaseAnalyzer
     active_ = false;
     stop_ = false;
     thread_ = new Thread(new Worker());
-    thread_.start();
-    
     holder_ = holder;
     holder_.addCallback(this);
     
@@ -38,6 +36,8 @@ public abstract class BaseAnalyzer
     if (holder_.getSurface() != null) {
       surfaceCreated(holder);
     }
+    
+    thread_.start();
   }
   
   class Worker implements Runnable {
@@ -46,7 +46,7 @@ public abstract class BaseAnalyzer
       while (true) {
         // Wait until both data and surface are available.
         synchronized (data_mutex_) {
-          while (data_ == null || !active_) {
+          while (data_ == null || !data_updated_ || !active_) {
             try {
               data_mutex_.wait();
             } catch (InterruptedException e) {
