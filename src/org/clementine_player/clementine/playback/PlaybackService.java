@@ -41,7 +41,7 @@ public class PlaybackService
   
   // TODO(dsansome): make these configurable.
   public static final long kFadeDurationMsec = 2000L;
-  public static final int kVisualizerCaptureSize = 128;
+  public static final int kVisualizerCaptureSize = 256;
   public static final int kVisualizerUpdateIntervalHz = 20;  // 20
   
   @Override
