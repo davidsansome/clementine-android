@@ -2,12 +2,11 @@ package org.clementine_player.clementine.providers.di;
 
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.ArrayList;
-import java.util.List;
 
-import org.clementine_player.clementine.providers.ListItem;
+import org.clementine_player.clementine.PB;
 import org.clementine_player.clementine.providers.ProviderException;
 import org.clementine_player.clementine.providers.URLFetcher;
 import org.json.JSONArray;
@@ -40,7 +39,7 @@ public class ApiClient {
     connection.setRequestProperty("Authorization", "Basic " + value);
   }
   
-  public List<ListItem> GetChannelList() throws ProviderException {
+  public PB.BrowserItemList GetChannelList() throws ProviderException {
     URL url;
     try {
       url = new URL(String.format(CHANNEL_LIST_URL, service_name_));
@@ -51,7 +50,7 @@ public class ApiClient {
     URLFetcher fetcher = new URLFetcher(url);
     SetAuthenticationHeader(fetcher.connection());
     
-    List<ListItem> ret = new ArrayList<ListItem>();
+    PB.BrowserItemList.Builder builder = PB.BrowserItemList.newBuilder();
     
     try {
       JSONObject data = fetcher.GetJSONObject();
@@ -65,7 +64,7 @@ public class ApiClient {
         JSONArray channels = filter.getJSONArray("channels");
         for (int j=0 ; j<channels.length() ; ++j) {
           JSONObject channel = channels.getJSONObject(j);
-          ret.add(new Channel(service_name_, channel));
+          ChannelToBrowserItem(channel, builder.addItemsBuilder());
         }
         
         break;
@@ -74,7 +73,17 @@ public class ApiClient {
       throw new ProviderException("Failed to parse channel list JSON", e);
     }
     
-    return ret;
+    return builder.build();
+  }
+  
+  private void ChannelToBrowserItem(
+      JSONObject channel, PB.BrowserItem.Builder builder) throws JSONException {
+    builder.setText1(channel.getString("name"));
+    builder.setText2(channel.getString("description"));
+    builder.setMediaUri(service_name_ + "://" + channel.getString("key"));
+    builder.setImageUrl(channel.getString("asset_url"));
+    builder.getMetadataBuilder().setArtist(
+        channel.getString("channel_director"));
   }
 
   public String service_name() {

@@ -1,30 +1,46 @@
 package org.clementine_player.clementine.providers;
 
-import java.util.List;
+import org.clementine_player.clementine.Application;
+import org.clementine_player.clementine.PB;
 
 import android.content.Context;
 import android.support.v4.content.AsyncTaskLoader;
 
 public abstract class CachingItemLoader
-    extends AsyncTaskLoader<List<ListItem>> {
-  private List<ListItem> cached_data_;
+    extends AsyncTaskLoader<PB.BrowserItemList> {
+  private String provider_key_;
+  private String key_;
   
-  public CachingItemLoader(Context context) {
+  public CachingItemLoader(Context context, String provider_key) {
     super(context);
+    provider_key_ = provider_key;
+    key_ = null;
+  }
+  
+  public CachingItemLoader(Context context, String provider_key, String key) {
+    super(context);
+    provider_key_ = provider_key;
+    key_ = key;
   }
 
   @Override
   protected void onStartLoading() {
-    if (cached_data_ != null) {
-      deliverResult(cached_data_);
+    // Try to load the data from the cache.
+    PB.BrowserItemList ret =
+        Application.instance().browser_item_cache().Load(provider_key_, key_);
+    if (ret != null) {
+      deliverResult(ret);
       return;
     }
+    
+    // Otherwise get fresh data.
     forceLoad();
   }
   
   @Override
-  public void deliverResult(List<ListItem> data) {
-    cached_data_ = data;
-    super.deliverResult(data);
+  protected PB.BrowserItemList onLoadInBackground() {
+    PB.BrowserItemList ret = super.onLoadInBackground();
+    Application.instance().browser_item_cache().Save(provider_key_, key_, ret);
+    return ret;
   }
 }

@@ -3,6 +3,31 @@ package clementine;
 option java_package = "org.clementine_player.clementine";
 option java_outer_classname = "PB";
 
+message BrowserItem {
+  // Lines of text to display in the list view.
+  optional string text1 = 1;
+  optional string text2 = 2;
+  
+  // If this item is a song, the URI that will be used to resolve to the actual
+  // audio content.
+  optional string media_uri = 3;
+  
+  // The URL to an icon to display in the list view.
+  optional string image_url = 4;
+  
+  // Any extra metadata that the provider needs to keep to be able to create a
+  // Song from this BrowserItem.  Providers should avoid storing metadata here
+  // and load it on demand if possible.
+  optional Song metadata = 5;  
+  
+  optional bool has_children = 6 [default = false];
+  optional string key = 7;
+}
+
+message BrowserItemList {
+  repeated BrowserItem items = 1;
+}
+
 message Song {
   enum Type {
     UNKNOWN = 0;
@@ -54,4 +79,8 @@ message Song {
   optional string etag = 30;
   optional string performer = 31;
   optional string grouping = 32;
+}
+
+message SongList {
+  repeated Song songs = 1;
 }

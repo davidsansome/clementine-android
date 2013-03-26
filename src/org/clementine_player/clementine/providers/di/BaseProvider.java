@@ -1,16 +1,14 @@
 package org.clementine_player.clementine.providers.di;
 
-import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.clementine_player.clementine.Application;
+import org.clementine_player.clementine.PB;
 import org.clementine_player.clementine.PB.Song;
+import org.clementine_player.clementine.Utils;
 import org.clementine_player.clementine.providers.CachingItemLoader;
-import org.clementine_player.clementine.providers.ListItem;
 import org.clementine_player.clementine.providers.ProviderException;
 import org.clementine_player.clementine.providers.ProviderInterface;
 import org.clementine_player.clementine.providers.URLFetcher;
@@ -61,19 +59,24 @@ public class BaseProvider extends ProviderInterface {
   public String name() {
     return name_;
   }
+  
+  @Override
+  public String provider_key() {
+    return "di/" + api_client_.service_name();
+  }
 
   @Override
-  public Loader<List<ListItem>> LoadItems(
+  public Loader<PB.BrowserItemList> LoadItems(
       Context context, String parent_url) {
     if (item_loader_ == null) {
-      item_loader_ = new CachingItemLoader(context) {
+      item_loader_ = new CachingItemLoader(context, provider_key()) {
         @Override
-        public List<ListItem> loadInBackground() 
+        public PB.BrowserItemList loadInBackground() 
             throws OperationCanceledException {
           try {
             return api_client_.GetChannelList();
           } catch (ProviderException e) {
-            throw new OperationCanceledException(e.getMessage());
+            throw new OperationCanceledException(Utils.ThrowableToString(e));
           }
         }
       };
@@ -82,25 +85,23 @@ public class BaseProvider extends ProviderInterface {
   }
   
   @Override
-  public Loader<List<Song>> LoadSongs(
-      Context context, final List<ListItem> items) {
-    return new Loader<List<Song>>(context) {
+  public Loader<PB.SongList> LoadSongs(
+      Context context, final PB.BrowserItemList items) {
+    return new Loader<PB.SongList>(context) {
       @Override
       protected void onStartLoading() {
-        List<Song> ret = new ArrayList<Song>();
+        PB.SongList.Builder ret = PB.SongList.newBuilder();
         
-        for (ListItem item : items) {
-          Channel channel = (Channel) item;
-          Song.Builder builder = Song.newBuilder();
+        for (PB.BrowserItem item : items.getItemsList()) {
+          Song.Builder builder = ret.addSongsBuilder();
           
-          builder.setTitle(channel.text1_);
-          builder.setArtist(channel.director_);
-          builder.setArtAutomatic(channel.image_url_.toString());
-          builder.setUri(channel.media_uri_.toString());
-          ret.add(builder.build());
+          builder.setTitle(item.getText1());
+          builder.setArtist(item.getMetadata().getArtist());
+          builder.setArtAutomatic(item.getImageUrl());
+          builder.setUri(item.getMediaUri());
         }
         
-        deliverResult(ret);
+        deliverResult(ret.build());
       }
     };
   }

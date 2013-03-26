@@ -1,11 +1,10 @@
 package org.clementine_player.clementine;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 import org.clementine_player.clementine.playback.PlaybackService;
 import org.clementine_player.clementine.playback.PlaybackService.PlaybackBinder;
-import org.clementine_player.clementine.providers.ListItem;
 import org.clementine_player.clementine.providers.ProviderInterface;
 
 import android.content.ComponentName;
@@ -28,26 +27,27 @@ import android.widget.TextView;
 
 public class ProviderBrowserFragment
     extends ListFragment
-    implements LoaderCallbacks<List<ListItem>> {
+    implements LoaderCallbacks<PB.BrowserItemList> {
   private class ItemAdapter extends BaseAdapter {
-    private List<ListItem> items_;
+    private PB.BrowserItemList items_;
     private LayoutInflater layout_inflater_;
     
     public ItemAdapter(Context context) {
-      items_ = new ArrayList<ListItem>();
-      
       layout_inflater_ = (LayoutInflater)
            context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
     }
     
     @Override
     public int getCount() {
-      return items_.size();
+      if (items_ == null) {
+        return 0;
+      }
+      return items_.getItemsCount();
     }
 
     @Override
     public Object getItem(int position) {
-      return items_.get(position);
+      return items_.getItems(position);
     }
 
     @Override
@@ -64,19 +64,19 @@ public class ProviderBrowserFragment
       TextView text_view_1 = (TextView) convert_view.findViewById(R.id.text1);
       TextView text_view_2 = (TextView) convert_view.findViewById(R.id.text2);
       
-      ListItem item = items_.get(position);
-      text_view_1.setText(item.text1_);
+      PB.BrowserItem item = items_.getItems(position);
+      text_view_1.setText(item.getText1());
       
-      if (item.text2_ != null) {
+      if (item.hasText2() && !item.getText2().isEmpty()) {
         text_view_2.setVisibility(View.VISIBLE);
-        text_view_2.setText(item.text2_);
+        text_view_2.setText(item.getText2());
       } else {
         text_view_2.setVisibility(View.GONE);
       }
       
-      if (item.image_url_ != null) {
+      if (item.hasImageUrl() && !item.getImageUrl().isEmpty()) {
         Application.instance().image_loader().DisplayImage(
-            item.image_url_.toString(),
+            item.getImageUrl(),
             (ImageView) convert_view.findViewById(R.id.image));
       }
       
@@ -88,13 +88,13 @@ public class ProviderBrowserFragment
       return true;
     }
 
-    public void SetData(List<ListItem> items) {
+    public void SetData(PB.BrowserItemList items) {
       items_ = items;
       notifyDataSetChanged();
     }
     
-    public ListItem GetListItem(int position) {
-      return items_.get(position);
+    public PB.BrowserItem GetListItem(int position) {
+      return items_.getItems(position);
     }
   }
   
@@ -123,28 +123,28 @@ public class ProviderBrowserFragment
   }
   
   @Override
-  public Loader<List<ListItem>> onCreateLoader(int id, Bundle args) {
+  public Loader<PB.BrowserItemList> onCreateLoader(int id, Bundle args) {
     return provider_.LoadItems(getActivity(), parent_url_);
   }
 
   @Override
   public void onLoadFinished(
-      Loader<List<ListItem>> loader, List<ListItem> items) {
+      Loader<PB.BrowserItemList> loader, PB.BrowserItemList items) {
     setListShown(true);
     adapter_.SetData(items);
   }
 
   @Override
-  public void onLoaderReset(Loader<List<ListItem>> arg0) {
+  public void onLoaderReset(Loader<PB.BrowserItemList> loader) {
   }
   
   private ServiceConnection connection_;
   
   @Override
   public void onListItemClick(ListView l, View v, int position, long id) {
-    final ListItem item = adapter_.GetListItem(position);
+    final PB.BrowserItem item = adapter_.GetListItem(position);
     
-    if (item.has_children_) {
+    if (item.getHasChildren()) {
       // TODO(dsansome): not supported yet.
       return;
     }
@@ -162,7 +162,11 @@ public class ProviderBrowserFragment
         
         PlaybackService playback_service =
             ((PlaybackBinder) service).GetService();
-        playback_service.StartNewSong(item.media_uri_);
+        try {
+          playback_service.StartNewSong(new URI(item.getMediaUri()));
+        } catch (URISyntaxException e) {
+          // TODO(dsansome): Show an error?
+        }
       }
     };
     Intent intent = new Intent(getActivity(), PlaybackService.class);

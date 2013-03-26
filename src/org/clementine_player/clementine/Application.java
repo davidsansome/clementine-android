@@ -15,6 +15,7 @@ public class Application extends android.app.Application {
 
   private static Application sInstance;
   private Context context_;
+  private BrowserItemCache browser_item_cache_;
   private ProviderManager provider_manager_;
   private ParserManager playlist_parser_manager_;
   private ImageLoader image_loader_;
@@ -23,6 +24,8 @@ public class Application extends android.app.Application {
     super.onCreate();
     sInstance = this;
     context_ = getApplicationContext();
+    
+    browser_item_cache_ = new BrowserItemCache(context_); 
     provider_manager_ = new ProviderManager();
     playlist_parser_manager_ = new ParserManager();
     image_loader_ = new ImageLoader(context_);
@@ -45,6 +48,10 @@ public class Application extends android.app.Application {
   
   public String user_agent() {
     return String.format(USER_AGENT, version_name(), Build.PRODUCT);
+  }
+  
+  public BrowserItemCache browser_item_cache() {
+    return browser_item_cache_;
   }
   
   public ProviderManager provider_manager() {
