@@ -10,6 +10,7 @@ import org.clementine_player.clementine.providers.di.DigitallyImportedProvider;
 import org.clementine_player.clementine.providers.di.JazzRadioProvider;
 import org.clementine_player.clementine.providers.di.RockRadioProvider;
 import org.clementine_player.clementine.providers.di.SkyFmProvider;
+import org.clementine_player.clementine.providers.mediastore.MediaStoreProvider;
 
 public class ProviderManager {
   private List<ProviderInterface> providers_;
@@ -21,6 +22,7 @@ public class ProviderManager {
     providers_by_type_ = new HashMap<String, ProviderInterface>();
     providers_by_uri_scheme_ = new HashMap<String, ProviderInterface>();
     
+    AddProvider(new MediaStoreProvider());
     AddProvider(new DigitallyImportedProvider());
     AddProvider(new SkyFmProvider());
     AddProvider(new JazzRadioProvider());

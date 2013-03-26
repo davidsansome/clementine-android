@@ -73,7 +73,12 @@ public class PlaybackService
     if (provider == null) {
       // This must be a http:// or file:// URI, in which case we can load it
       // directly.
-      StartNewSong(uri.toString());
+      if (uri.getScheme().equals("file")) {
+        // Nope, that would be too easy...
+        StartNewSong(uri.getPath());
+      } else {
+        StartNewSong(uri.toString());
+      }
       return;
     }
     

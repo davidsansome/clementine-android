@@ -19,7 +19,7 @@ import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.Loader;
 import android.util.Log;
 
-public class BaseProvider extends ProviderInterface {
+public class BaseProvider implements ProviderInterface {
   private String name_;
   private String hostname_;
   private ApiClient api_client_;

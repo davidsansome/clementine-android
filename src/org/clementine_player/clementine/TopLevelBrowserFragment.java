@@ -48,7 +48,7 @@ public class TopLevelBrowserFragment extends ListFragment {
     
     Bundle args = new Bundle();
     args.putString("provider_name", map.get("provider_name"));
-    args.putString("parent_url", null);
+    args.putString("parent_key", null);
     
     ProviderBrowserFragment new_fragment = new ProviderBrowserFragment();
     new_fragment.setArguments(args);

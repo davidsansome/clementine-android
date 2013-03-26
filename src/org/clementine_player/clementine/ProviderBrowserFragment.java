@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.app.ListFragment;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.Loader;
@@ -97,10 +98,13 @@ public class ProviderBrowserFragment
       return items_.getItems(position);
     }
   }
+
+  private static final String TAG = "ProviderBrowserFragment";
   
   private ItemAdapter adapter_;
+  private String provider_name_;
   private ProviderInterface provider_;
-  private String parent_url_;
+  private String parent_key_;
 
   @Override
   public void onCreate(Bundle saved_instance_state) {
@@ -109,9 +113,10 @@ public class ProviderBrowserFragment
     adapter_ = new ItemAdapter(getActivity());
     setListAdapter(adapter_);
     
+    provider_name_ = getArguments().getString("provider_name");
     provider_ = Application.instance().provider_manager().ProviderByType(
-        getArguments().getString("provider_name"));
-    parent_url_ = getArguments().getString("parent_url");
+        provider_name_);
+    parent_key_ = getArguments().getString("parent_key");
     
     getLoaderManager().initLoader(0, null, this);
   }
@@ -124,7 +129,7 @@ public class ProviderBrowserFragment
   
   @Override
   public Loader<PB.BrowserItemList> onCreateLoader(int id, Bundle args) {
-    return provider_.LoadItems(getActivity(), parent_url_);
+    return provider_.LoadItems(getActivity(), parent_key_);
   }
 
   @Override
@@ -145,7 +150,19 @@ public class ProviderBrowserFragment
     final PB.BrowserItem item = adapter_.GetListItem(position);
     
     if (item.getHasChildren()) {
-      // TODO(dsansome): not supported yet.
+      Bundle args = new Bundle();
+      args.putString("provider_name", provider_name_);
+      args.putString("parent_key", item.getKey());
+      
+      ProviderBrowserFragment new_fragment = new ProviderBrowserFragment();
+      new_fragment.setArguments(args);
+      
+      FragmentTransaction transaction =
+          getActivity().getSupportFragmentManager().beginTransaction();
+      transaction.replace(R.id.browser, new_fragment);
+      transaction.addToBackStack(null);
+      transaction.commit();
+      
       return;
     }
     
@@ -165,7 +182,7 @@ public class ProviderBrowserFragment
         try {
           playback_service.StartNewSong(new URI(item.getMediaUri()));
         } catch (URISyntaxException e) {
-          // TODO(dsansome): Show an error?
+          Log.w(TAG, "Invalid URI: " + item.getMediaUri());
         }
       }
     };

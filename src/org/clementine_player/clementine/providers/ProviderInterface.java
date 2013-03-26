@@ -10,7 +10,7 @@ import org.clementine_player.clementine.PB.Song;
 import android.content.Context;
 import android.support.v4.content.Loader;
 
-public abstract class ProviderInterface {
+public abstract interface ProviderInterface {
   public abstract String name();
   public abstract String provider_key();
   public abstract String[] uri_schemes();
