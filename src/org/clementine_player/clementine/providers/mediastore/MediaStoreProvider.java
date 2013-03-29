@@ -6,6 +6,7 @@ import java.net.URL;
 
 import org.clementine_player.clementine.PB;
 import org.clementine_player.clementine.PB.BrowserItem.Builder;
+import org.clementine_player.clementine.R;
 import org.clementine_player.clementine.providers.NonCachingItemLoader;
 import org.clementine_player.clementine.providers.ProviderInterface;
 
@@ -14,12 +15,16 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.support.v4.content.Loader;
-import android.util.Log;
 
 public class MediaStoreProvider implements ProviderInterface {
   @Override
-  public String name() {
-    return "Library";
+  public PB.BrowserItem provider_item() {
+    PB.BrowserItem.Builder ret = PB.BrowserItem.newBuilder();
+    ret.setText1("Library");
+    ret.getImageBuilder().setResource(R.drawable.library);
+    ret.setHasChildren(true);
+    ret.setProviderClassName(getClass().getName());
+    return ret.build();
   }
 
   @Override

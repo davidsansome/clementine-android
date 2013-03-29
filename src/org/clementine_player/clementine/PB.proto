@@ -3,6 +3,18 @@ package clementine;
 option java_package = "org.clementine_player.clementine";
 option java_outer_classname = "PB";
 
+message Image {
+  // A URL to an image to download from the internet.
+  optional string url = 1;
+
+  // An internal Android resource ID.
+  optional int32 resource = 2;
+
+  // Raw data that will be decoded with
+  // android.graphics.BitmapFactory.decodeByteArray.
+  optional bytes data = 3;
+}
+
 message BrowserItem {
   // Lines of text to display in the list view.
   optional string text1 = 1;
@@ -12,16 +24,21 @@ message BrowserItem {
   // audio content.
   optional string media_uri = 3;
   
-  // The URL to an icon to display in the list view.
-  optional string image_url = 4;
+  // An icon to display in the list view.
+  optional Image image = 4;
   
   // Any extra metadata that the provider needs to keep to be able to create a
   // Song from this BrowserItem.  Providers should avoid storing metadata here
   // and load it on demand if possible.
-  optional Song metadata = 5;  
+  optional Song metadata = 5;
   
+  // If has_children is false (the default), this item is a song whose URI is
+  // in media_uri.  Otherwise opening this item will cause a list of children
+  // to be requested from the same provider (if provider_class_name is null),
+  // or the provider given in provider_class_name.
   optional bool has_children = 6 [default = false];
   optional string key = 7;
+  optional string provider_class_name = 8;
 }
 
 message BrowserItemList {
@@ -74,7 +91,7 @@ message Song {
   optional int32 ctime = 25;
   optional int32 filesize = 26;
   optional bool suspicious_tags = 27;
-  optional string art_automatic = 28;
+  optional Image art = 28;
   optional Type type = 29;
   optional string etag = 30;
   optional string performer = 31;

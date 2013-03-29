@@ -68,7 +68,7 @@ public class MainActivity
     
     // Create the browser fragment.
     if (saved_instance_state == null) {
-      TopLevelBrowserFragment fragment = new TopLevelBrowserFragment();
+      ProviderBrowserFragment fragment = new ProviderBrowserFragment();
       
       FragmentTransaction transaction =
           getSupportFragmentManager().beginTransaction();

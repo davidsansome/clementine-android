@@ -81,7 +81,7 @@ public class ApiClient {
     builder.setText1(channel.getString("name"));
     builder.setText2(channel.getString("description"));
     builder.setMediaUri(service_name_ + "://" + channel.getString("key"));
-    builder.setImageUrl(channel.getString("asset_url"));
+    builder.getImageBuilder().setUrl(channel.getString("asset_url"));
     builder.getMetadataBuilder().setArtist(
         channel.getString("channel_director"));
   }

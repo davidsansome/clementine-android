@@ -19,8 +19,7 @@ import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.Loader;
 import android.util.Log;
 
-public class BaseProvider implements ProviderInterface {
-  private String name_;
+public abstract class BaseProvider implements ProviderInterface {
   private String hostname_;
   private ApiClient api_client_;
   private CachingItemLoader item_loader_;
@@ -43,10 +42,8 @@ public class BaseProvider implements ProviderInterface {
     "http://listen.%s/premium_wma/%s.asx?hash=%s",
   };
   
-  protected BaseProvider(String name,
-                         String service_name,
+  protected BaseProvider(String service_name,
                          String hostname) {
-    name_ = name;
     hostname_ = hostname;
     api_client_ = new ApiClient(service_name);
     
@@ -55,11 +52,6 @@ public class BaseProvider implements ProviderInterface {
     log_tag_ = "BaseProvider(" + service_name + ")";
   }
 
-  @Override
-  public String name() {
-    return name_;
-  }
-  
   @Override
   public String provider_key() {
     return "di/" + api_client_.service_name();
@@ -97,7 +89,7 @@ public class BaseProvider implements ProviderInterface {
           
           builder.setTitle(item.getText1());
           builder.setArtist(item.getMetadata().getArtist());
-          builder.setArtAutomatic(item.getImageUrl());
+          builder.setArt(item.getImage());
           builder.setUri(item.getMediaUri());
         }
         

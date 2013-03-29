@@ -11,6 +11,8 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.FragmentTransaction;
@@ -75,10 +77,20 @@ public class ProviderBrowserFragment
         text_view_2.setVisibility(View.GONE);
       }
       
-      if (item.hasImageUrl() && !item.getImageUrl().isEmpty()) {
-        Application.instance().image_loader().DisplayImage(
-            item.getImageUrl(),
-            (ImageView) convert_view.findViewById(R.id.image));
+      if (item.hasImage()) {
+        PB.Image image = item.getImage();
+        ImageView view = (ImageView) convert_view.findViewById(R.id.image);
+        
+        if (image.hasUrl()) {
+          Application.instance().image_loader().DisplayImage(
+              image.getUrl(), view);          
+        } else if (image.hasResource()) {
+          view.setImageResource(image.getResource());
+        } else if (image.hasData()) {
+          byte[] bytes = image.getData().toByteArray();
+          Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+          view.setImageBitmap(bitmap);
+        }
       }
       
       return convert_view;
@@ -113,10 +125,17 @@ public class ProviderBrowserFragment
     adapter_ = new ItemAdapter(getActivity());
     setListAdapter(adapter_);
     
-    provider_name_ = getArguments().getString("provider_name");
-    provider_ = Application.instance().provider_manager().ProviderByType(
-        provider_name_);
-    parent_key_ = getArguments().getString("parent_key");
+    Bundle arguments = getArguments();
+    
+    if (arguments == null) {
+      // This is the top level view.
+      provider_ = Application.instance().provider_manager();
+    } else {
+      provider_name_ = arguments.getString("provider_name");
+      provider_ = Application.instance().provider_manager().ProviderByType(
+          provider_name_);
+      parent_key_ = arguments.getString("parent_key");
+    }
     
     getLoaderManager().initLoader(0, null, this);
   }
@@ -151,8 +170,15 @@ public class ProviderBrowserFragment
     
     if (item.getHasChildren()) {
       Bundle args = new Bundle();
-      args.putString("provider_name", provider_name_);
-      args.putString("parent_key", item.getKey());
+      if (item.hasProviderClassName()) {
+        args.putString("provider_name", item.getProviderClassName());
+      } else {
+        args.putString("provider_name", provider_name_);
+      }
+      
+      if (item.hasKey()) {
+        args.putString("parent_key", item.getKey());
+      }
       
       ProviderBrowserFragment new_fragment = new ProviderBrowserFragment();
       new_fragment.setArguments(args);
