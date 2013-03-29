@@ -23,6 +23,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewGroup.LayoutParams;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -75,6 +76,7 @@ public class ProviderBrowserFragment
         text_view_2.setText(item.getText2());
       } else {
         text_view_2.setVisibility(View.GONE);
+        text_view_1.getLayoutParams().height = LayoutParams.MATCH_PARENT;
       }
       
       if (item.hasImage()) {
