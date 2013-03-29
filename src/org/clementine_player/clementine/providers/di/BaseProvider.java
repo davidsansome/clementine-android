@@ -47,7 +47,7 @@ public abstract class BaseProvider implements ProviderInterface {
     hostname_ = hostname;
     api_client_ = new ApiClient(service_name);
     
-    basic_audio_type_ = 1;
+    basic_audio_type_ = 0;
     
     log_tag_ = "BaseProvider(" + service_name + ")";
   }

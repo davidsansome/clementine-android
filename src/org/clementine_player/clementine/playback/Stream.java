@@ -4,20 +4,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.clementine_player.gstmediaplayer.MediaPlayer;
+
 import android.animation.Animator;
 import android.animation.Animator.AnimatorListener;
 import android.animation.ValueAnimator;
 import android.animation.ValueAnimator.AnimatorUpdateListener;
 import android.media.AudioManager;
-import android.media.MediaPlayer;
-import android.media.MediaPlayer.OnCompletionListener;
-import android.media.MediaPlayer.OnPreparedListener;
 import android.media.audiofx.Visualizer;
 import android.util.Log;
 
-public class Stream
-    implements OnPreparedListener,
-               OnCompletionListener {
+public class Stream {
   public enum State {
     // Valid for:  current  desired
     PREPARING, //  yes      no
@@ -56,16 +53,8 @@ public class Stream
     
     Log.i(log_tag_, "New stream for " + url);
     
-    player_ = new MediaPlayer();
-    player_.setAudioStreamType(AudioManager.STREAM_MUSIC);
-    player_.setOnPreparedListener(this);
-    player_.setOnCompletionListener(this);
-    try {
-      player_.setDataSource(url);
-    } catch (IOException e) {
-      // What is this I don't even
-    }
-    player_.prepareAsync();
+    player_ = new MediaPlayer(url);
+    player_.Start();
   }
   
   public void AddListener(Listener listener) {
@@ -96,7 +85,7 @@ public class Stream
     desired_state_ = state;
   }
 
-  @Override
+  /*@Override
   public void onPrepared(MediaPlayer mp) {
     switch (desired_state_) {
       case STARTED:
@@ -123,7 +112,7 @@ public class Stream
   public void onCompletion(MediaPlayer mp) {
     SetCurrentState(State.COMPLETED);
     Release();
-  }
+  }*/
   
   public void Play() {
     SetDesiredState(State.STARTED);
@@ -134,7 +123,7 @@ public class Stream
         break;
       case PREPARED:
       case PAUSED:
-        player_.start();
+        player_.Start();
         SetCurrentState(State.STARTED);
         
         if (fade_in_desired_) {
@@ -153,12 +142,12 @@ public class Stream
       case COMPLETED:
         break;
       case PREPARED:
-        player_.start();
-        player_.pause();
+        player_.Start();
+        player_.Pause();
         SetCurrentState(State.PAUSED);
         break;
       case STARTED:
-        player_.pause();
+        player_.Pause();
         SetCurrentState(State.PAUSED);
         break;
     }
@@ -175,7 +164,7 @@ public class Stream
   public void Release() {
     if (player_ != null) {
       SetCurrentState(State.COMPLETED);
-      player_.release();
+      player_.Release();
       player_ = null;
     }
   }
@@ -216,7 +205,7 @@ public class Stream
       public void onAnimationUpdate(ValueAnimator animator) {
         if (player_ != null) {
           current_volume_ = (Float) animator.getAnimatedValue();
-          player_.setVolume(current_volume_, current_volume_);
+          player_.SetVolume(current_volume_);
         }
       }
     });
@@ -251,7 +240,9 @@ public class Stream
   }
   
   public Visualizer CreateVisualizer() {
-    return new Visualizer(player_.getAudioSessionId());
+    return null;
+    // TODO(dsansome): implement session IDs.
+    // return new Visualizer(player_.getAudioSessionId());
   }
   
   public State current_state() {

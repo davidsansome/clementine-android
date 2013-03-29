@@ -3,12 +3,11 @@ package org.clementine_player.clementine;
 import org.clementine_player.clementine.playlist_parsers.ParserManager;
 import org.clementine_player.clementine.providers.ProviderManager;
 
-import com.fedorvlasov.lazylist.ImageLoader;
-
 import android.content.Context;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Build;
-import android.util.Log;
+
+import com.fedorvlasov.lazylist.ImageLoader;
 
 public class Application extends android.app.Application {
   private static final String USER_AGENT = "Clementine %s (Android; %s)";
@@ -29,8 +28,6 @@ public class Application extends android.app.Application {
     provider_manager_ = new ProviderManager();
     playlist_parser_manager_ = new ParserManager();
     image_loader_ = new ImageLoader(context_);
-    
-    Log.i("Application", "Default encoding is " + System.getProperty("file.encoding"));
   }
   
   public static Application instance() {
