@@ -19,6 +19,7 @@
 #define MEDIAPLAYER_H
 
 #include <gst/gst.h>
+#include <jni.h>
 #include <pthread.h>
 #include <string>
 
@@ -26,13 +27,20 @@ using std::string;
 
 class MediaPlayer {
  public:
-  MediaPlayer(const char* url);
-  ~MediaPlayer();
+  MediaPlayer(JavaVM* vm,
+              JNIEnv* env,
+              jobject object,
+              jmethodID state_changed_callback,
+              const char* url);
 
+  void Release(JNIEnv* env);
+
+  // Can be called from any thread.
   void Start();
   void Pause();
   void SetVolume(float volume);
 
+  // Must be kept in sync with MediaPlayer.java
   enum State {
     PREPARING = 0,
     PAUSED = 1,
@@ -42,20 +50,31 @@ class MediaPlayer {
   };
 
  private:
-  // Callbacks.  These just invoke their non-static counterparts.
+  // Our thread's main function.
   static void* ThreadMainCallback(void* self);
+  void ThreadMain();
+
+  // Invoked on gstreamer threads.
   static void ErrorCallback(GstBus* bus, GstMessage* msg, void* self);
   static void StateChangedCallback(GstBus* bus, GstMessage* msg, void* self);
+  void Error(GstMessage* msg);
+  void StateChanged(GstMessage* msg);
 
-  void ThreadMain();
-  void Error(GstBus* bus, GstMessage* msg);
-  void StateChanged(GstBus* bus, GstMessage* msg);
+  // Invoked on our thread.
+  static int IdleStartCallback(void* self);
+  static int IdlePauseCallback(void* self);
+  static int IdleExitCallback(void* self);
 
-  // Idle sources that are invoked on the thread.
-  static int IdleStart(void* self);
-  static int IdlePause(void* self);
+  // Can be invoked from any thread attached to the JVM.
+  void SetState(State state, const char* message = NULL);
 
-  void SetState(State state);
+  // Internal helpers for SetState to call itself on the right thread.
+  struct SetStateArgs {
+    MediaPlayer* self;
+    char* message;
+    State state;
+  };
+  static int IdleSetStateCallback(void* args);
 
  private:
   string url_;
@@ -64,6 +83,11 @@ class MediaPlayer {
   GMainContext* context_;
   GMainLoop* main_loop_;
   GstElement* pipeline_;
+
+  JavaVM* vm_;
+  JNIEnv* env_;
+  jobject object_;
+  jmethodID state_changed_callback_;
 };
 
 #endif // MEDIAPLAYER_H

@@ -18,11 +18,19 @@
 #include "mediaplayer.h"
 #include "logging.h"
 
-MediaPlayer::MediaPlayer(const char* url)
+MediaPlayer::MediaPlayer(JavaVM* vm,
+                         JNIEnv* env,
+                         jobject object,
+                         jmethodID state_changed_callback,
+                         const char* url)
     : url_(url),
       context_(NULL),
       main_loop_(NULL),
-      pipeline_(NULL) {
+      pipeline_(NULL),
+      vm_(vm),
+      env_(NULL),
+      object_(env->NewGlobalRef(object)),
+      state_changed_callback_(state_changed_callback) {
   SetState(PREPARING);
 
   // Create a context now so it's accessible as soon as the ctor returns.
@@ -32,8 +40,16 @@ MediaPlayer::MediaPlayer(const char* url)
   pthread_create(&thread_, NULL, &MediaPlayer::ThreadMainCallback, this);
 }
 
-MediaPlayer::~MediaPlayer() {
+void MediaPlayer::Release(JNIEnv* env) {
+  // Exit the main loop and wait for the thread to exit.
+  g_main_context_invoke(context_, &MediaPlayer::IdleExitCallback, this);
+  pthread_join(thread_, NULL);
+
+  // Unref the main context.
   g_main_context_unref(context_);
+
+  // Release the reference to the java object.
+  env->DeleteGlobalRef(object_);
 }
 
 void* MediaPlayer::ThreadMainCallback(void* self) {
@@ -42,15 +58,26 @@ void* MediaPlayer::ThreadMainCallback(void* self) {
 }
 
 void MediaPlayer::ErrorCallback(GstBus* bus, GstMessage* msg, void* self) {
-  reinterpret_cast<MediaPlayer*>(self)->Error(bus, msg);
+  reinterpret_cast<MediaPlayer*>(self)->Error(msg);
 }
 
 void MediaPlayer::StateChangedCallback(GstBus* bus, GstMessage* msg, void* self) {
-  reinterpret_cast<MediaPlayer*>(self)->StateChanged(bus, msg);
+  reinterpret_cast<MediaPlayer*>(self)->StateChanged(msg);
 }
 
 void MediaPlayer::ThreadMain(void) {
   GError* error = NULL;
+
+  // Attach this thread to the JVM.
+  JavaVMAttachArgs args;
+  args.version = JNI_VERSION_1_4;
+  args.name = NULL;
+  args.group = NULL;
+
+  if (vm_->AttachCurrentThread(&env_, &args) < 0) {
+    SetState(ERROR, "Failed to attach thread to JVM");
+    return;
+  }
 
   // Set the main context as the default for this thread.
   g_main_context_push_thread_default(context_);
@@ -61,11 +88,10 @@ void MediaPlayer::ThreadMain(void) {
     gchar* message = g_strdup_printf(
         "Unable to build pipeline: %s", error->message);
     g_clear_error(&error);
-    // TODO(dsansome): pass error message somewhere.
-    LOG(ERROR, "%s", message);
+    SetState(ERROR, message);
     g_free(message);
 
-    SetState(ERROR);
+    vm_->DetachCurrentThread();
     return;
   }
 
@@ -74,6 +100,14 @@ void MediaPlayer::ThreadMain(void) {
 
   // Connect to interesting signals on the bus.
   GstBus* bus = gst_element_get_bus(pipeline_);
+  GSource* bus_source = gst_bus_create_watch(bus);
+  g_source_set_callback(
+      bus_source,
+      reinterpret_cast<GSourceFunc>(gst_bus_async_signal_func),
+      NULL,
+      NULL);
+  g_source_attach(bus_source, context_);
+  g_source_unref(bus_source);
   g_signal_connect(
       G_OBJECT(bus),
       "message::error",
@@ -82,9 +116,12 @@ void MediaPlayer::ThreadMain(void) {
   g_signal_connect(
       G_OBJECT(bus),
       "message::state-changed",
-      reinterpret_cast<GCallback>(StateChangedCallback),
+      reinterpret_cast<GCallback>(&MediaPlayer::StateChangedCallback),
       this);
   gst_object_unref(bus);
+
+  // Preroll and pause the pipeline.
+  gst_element_set_state(pipeline_, GST_STATE_PAUSED);
 
   // Create a mainloop and start running.
   main_loop_ = g_main_loop_new(context_, false);
@@ -96,36 +133,85 @@ void MediaPlayer::ThreadMain(void) {
   g_main_context_pop_thread_default(context_);
   gst_element_set_state(pipeline_, GST_STATE_NULL);
   gst_object_unref(pipeline_);
+
+  vm_->DetachCurrentThread();
 }
 
-void MediaPlayer::Error(GstBus* bus, GstMessage* msg) {
+void MediaPlayer::Error(GstMessage* msg) {
+  GError* err = NULL;
+  gchar* debug_info = NULL;
+  gst_message_parse_error(msg, &err, &debug_info);
+
+  LOG(ERROR, "%s: %s", GST_OBJECT_NAME (msg->src), err->message);
+
+  g_clear_error(&err);
+  g_free(debug_info);
+  gst_element_set_state(pipeline_, GST_STATE_NULL);
 }
 
-void MediaPlayer::StateChanged(GstBus* bus, GstMessage* msg) {
+void MediaPlayer::StateChanged(GstMessage* msg) {
+  GstState old_state;
+  GstState new_state;
+  GstState pending_state;
+  gst_message_parse_state_changed(msg, &old_state, &new_state, &pending_state);
+
+  // Only pay attention to messages coming from the pipeline, not its children.
+  if (GST_MESSAGE_SRC(msg) == GST_OBJECT(pipeline_)) {
+    State my_state = PREPARING;
+    switch (new_state) {
+      case GST_STATE_VOID_PENDING: my_state = PREPARING; break;
+      case GST_STATE_NULL:         my_state = COMPLETED; break;
+      case GST_STATE_READY:
+      case GST_STATE_PAUSED:       my_state = PAUSED; break;
+      case GST_STATE_PLAYING:      my_state = PLAYING; break;
+    }
+
+    SetState(my_state);
+  }
 }
 
-void MediaPlayer::SetState(State state) {
+void MediaPlayer::SetState(State state, const char* message) {
+  JNIEnv* env = NULL;
+  if (vm_->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
+    LOG(WARN, "MediaPlayer::SetState - thread is not attached to the JVM");
+    return;
+  }
+
+  jint jstate = state;
+  jstring jmessage = NULL;
+  if (message) {
+    jmessage = env->NewStringUTF(message);
+  }
+
+  env->CallVoidMethod(object_, state_changed_callback_, jstate, jmessage);
+
+  if (jmessage) {
+    env->DeleteLocalRef(jmessage);
+  }
 }
 
 void MediaPlayer::Start() {
-  g_main_context_invoke(context_, &MediaPlayer::IdleStart, this);
+  g_main_context_invoke(context_, &MediaPlayer::IdleStartCallback, this);
 }
 
-int MediaPlayer::IdleStart(void* self_vp) {
-  MediaPlayer* self = reinterpret_cast<MediaPlayer*>(self_vp);
-  gst_element_set_state(self->pipeline_, GST_STATE_PLAYING);
-
+int MediaPlayer::IdleStartCallback(void* self) {
+  gst_element_set_state(reinterpret_cast<MediaPlayer*>(self)->pipeline_,
+                        GST_STATE_PLAYING);
   return 0;
 }
 
 void MediaPlayer::Pause() {
-  g_main_context_invoke(context_, &MediaPlayer::IdlePause, this);
+  g_main_context_invoke(context_, &MediaPlayer::IdlePauseCallback, this);
 }
 
-int MediaPlayer::IdlePause(void* self_vp) {
-  MediaPlayer* self = reinterpret_cast<MediaPlayer*>(self_vp);
-  gst_element_set_state(self->pipeline_, GST_STATE_PAUSED);
+int MediaPlayer::IdlePauseCallback(void* self) {
+  gst_element_set_state(reinterpret_cast<MediaPlayer*>(self)->pipeline_,
+                        GST_STATE_PAUSED);
+  return 0;
+}
 
+int MediaPlayer::IdleExitCallback(void* self) {
+  g_main_loop_quit(reinterpret_cast<MediaPlayer*>(self)->main_loop_);
   return 0;
 }
 

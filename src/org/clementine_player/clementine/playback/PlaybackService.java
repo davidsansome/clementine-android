@@ -6,8 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.clementine_player.clementine.Application;
-import org.clementine_player.clementine.playback.Stream.Listener;
 import org.clementine_player.clementine.providers.ProviderInterface;
+import org.clementine_player.gstmediaplayer.MediaPlayer;
 
 import android.app.Service;
 import android.content.Intent;
@@ -20,7 +20,7 @@ import android.util.Log;
 
 public class PlaybackService
     extends Service
-    implements Stream.Listener,
+    implements MediaPlayer.Listener,
                Visualizer.OnDataCaptureListener {
   public class PlaybackBinder extends Binder {
     public PlaybackService GetService() {
@@ -34,7 +34,7 @@ public class PlaybackService
 
   private static final String TAG = "PlaybackService";
   
-  private List<Stream.Listener> stream_listeners_;
+  private List<MediaPlayer.Listener> stream_listeners_;
   private List<VisualizerListener> visualizer_listeners_;
   private Visualizer current_visualizer_;
   private Stream current_stream_;
@@ -46,13 +46,13 @@ public class PlaybackService
   
   @Override
   public void onCreate() {
-    stream_listeners_ = new ArrayList<Stream.Listener>();
+    stream_listeners_ = new ArrayList<MediaPlayer.Listener>();
     visualizer_listeners_ = new ArrayList<VisualizerListener>();
   }
   
   public void Stop() {
     SwapStream(null);
-    StreamStateChanged(Stream.State.COMPLETED);
+    StreamStateChanged(MediaPlayer.State.COMPLETED, null);
   }
 
   public void PlayPause() {
@@ -116,21 +116,21 @@ public class PlaybackService
     }
   }
   
-  public void AddStreamListener(Listener listener) {
+  public void AddStreamListener(MediaPlayer.Listener listener) {
     stream_listeners_.add(listener);
   }
   
-  public void RemoveStreamListener(Listener listener) {
+  public void RemoveStreamListener(MediaPlayer.Listener listener) {
     stream_listeners_.remove(listener);
   }
 
   @Override
-  public void StreamStateChanged(Stream.State state) {
-    for (Stream.Listener listener : stream_listeners_) {
-      listener.StreamStateChanged(state);
+  public void StreamStateChanged(MediaPlayer.State state, String message) {
+    for (MediaPlayer.Listener listener : stream_listeners_) {
+      listener.StreamStateChanged(state, message);
     }
     
-    if (state == Stream.State.STARTED && current_visualizer_ == null &&
+    if (state == MediaPlayer.State.PLAYING && current_visualizer_ == null &&
         !visualizer_listeners_.isEmpty()) {
       CreateVisualizer();
     }
@@ -138,12 +138,14 @@ public class PlaybackService
   
   private void CreateVisualizer() {
     current_visualizer_ = current_stream_.CreateVisualizer();
+    if (current_visualizer_ == null) {
+      return;
+    }
+    
     current_visualizer_.setCaptureSize(kVisualizerCaptureSize);
     current_visualizer_.setDataCaptureListener(
         this, kVisualizerUpdateIntervalHz * 1000, false, true);
     current_visualizer_.setEnabled(true);
-    Log.d(TAG, Visualizer.getCaptureSizeRange()[0] + ", " + Visualizer.getCaptureSizeRange()[1]);
-    Log.d(TAG, "" + Visualizer.getMaxCaptureRate());
   }
   
   public void AddVisualizerListener(VisualizerListener listener) {
@@ -151,7 +153,7 @@ public class PlaybackService
     
     if (current_visualizer_ == null &&
         current_stream_ != null &&
-        current_stream_.current_state() != Stream.State.PREPARING) {
+        current_stream_.current_state() != MediaPlayer.State.PREPARING) {
       CreateVisualizer();
     }
   }

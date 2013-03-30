@@ -5,6 +5,7 @@ import org.clementine_player.clementine.analyzers.BlockAnalyzer;
 import org.clementine_player.clementine.playback.PlaybackService;
 import org.clementine_player.clementine.playback.PlaybackService.PlaybackBinder;
 import org.clementine_player.clementine.playback.Stream;
+import org.clementine_player.gstmediaplayer.MediaPlayer;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -19,10 +20,11 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
 public class MainActivity 
     extends FragmentActivity
-    implements Stream.Listener,
+    implements MediaPlayer.Listener,
                PlaybackService.VisualizerListener {
   private static final String TAG = "MainActivity";
   
@@ -34,7 +36,7 @@ public class MainActivity
   
   private BaseAnalyzer analyzer_;
   
-  private Stream.State state_;
+  private MediaPlayer.State state_;
   private PlaybackService playback_service_;
   private ServiceConnection playback_connection_ = new ServiceConnection() {
     @Override
@@ -54,6 +56,8 @@ public class MainActivity
   
   @Override
   public void onCreate(Bundle saved_instance_state) {
+    Application.instance().set_main_activity(this);
+    
     super.onCreate(saved_instance_state);
     setContentView(R.layout.main);
     
@@ -76,8 +80,8 @@ public class MainActivity
       transaction.commit();
     }
     
-    state_ = Stream.State.COMPLETED;
-    StreamStateChanged(state_);
+    state_ = MediaPlayer.State.COMPLETED;
+    StreamStateChanged(state_, null);
   }
   
   @Override
@@ -90,10 +94,9 @@ public class MainActivity
   }
 
   @Override
-  public void StreamStateChanged(Stream.State state) {
+  public void StreamStateChanged(MediaPlayer.State state, String message) {
     switch (state) {
       case PREPARING:
-      case PREPARED:
         play_button_.setVisibility(View.INVISIBLE);
         pause_button_.setVisibility(View.VISIBLE);
         buffering_bar_.setVisibility(View.VISIBLE);
@@ -101,7 +104,7 @@ public class MainActivity
         stop_button_.setEnabled(true);
         break;
         
-      case STARTED:
+      case PLAYING:
         play_button_.setVisibility(View.INVISIBLE);
         pause_button_.setVisibility(View.VISIBLE);
         buffering_bar_.setVisibility(View.INVISIBLE);
@@ -115,6 +118,14 @@ public class MainActivity
         buffering_bar_.setVisibility(View.INVISIBLE);
         stop_button_.setEnabled(true);
         break;
+        
+      case ERROR:
+        if (message != null) {
+          Toast toast = Toast.makeText(this, message, Toast.LENGTH_LONG);
+          toast.show();
+        }
+        
+        // fallthrough
         
       case COMPLETED:
         play_button_.setVisibility(View.VISIBLE);

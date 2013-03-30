@@ -3,6 +3,7 @@ package org.clementine_player.clementine;
 import org.clementine_player.clementine.playlist_parsers.ParserManager;
 import org.clementine_player.clementine.providers.ProviderManager;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Build;
@@ -18,6 +19,7 @@ public class Application extends android.app.Application {
   private ProviderManager provider_manager_;
   private ParserManager playlist_parser_manager_;
   private ImageLoader image_loader_;
+  private Activity main_activity_;
   
   public void onCreate() {
     super.onCreate();
@@ -61,5 +63,13 @@ public class Application extends android.app.Application {
   
   public ParserManager playlist_parser_manager() {
     return playlist_parser_manager_;
+  }
+  
+  public void set_main_activity(Activity activity) {
+    main_activity_ = activity;
+  }
+  
+  public void RunOnUiThread(Runnable runnable) {
+    main_activity_.runOnUiThread(runnable);
   }
 }

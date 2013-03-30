@@ -3,27 +3,34 @@
 #include <string.h>
 
 #include "mediaplayer.h"
+#include "logging.h"
 
 namespace {
 
 jfieldID sHandleFieldID = NULL;
+jmethodID sStateMethodID = NULL;
+JavaVM* sVm = NULL;
 const char* kClassName = "org/clementine_player/gstmediaplayer/MediaPlayer";
+
 
 MediaPlayer* This(JNIEnv* env, jobject object) {
   return reinterpret_cast<MediaPlayer*>(
       env->GetLongField(object, sHandleFieldID));
 }
 
-jlong CreateNativeInstance(JNIEnv* env, jobject clazz, jstring url) {
+jlong CreateNativeInstance(JNIEnv* env, jobject object, jstring url) {
   const char* c_url = env->GetStringUTFChars(url, NULL);
-  MediaPlayer* instance = new MediaPlayer(c_url);
+  MediaPlayer* instance =
+      new MediaPlayer(sVm, env, object, sStateMethodID, c_url);
   env->ReleaseStringUTFChars(url, c_url);
 
   return reinterpret_cast<jlong>(instance);
 }
 
 void DestroyNativeInstance(JNIEnv* env, jobject object) {
-  delete This(env, object);
+  MediaPlayer* player = This(env, object);
+  player->Release(env);
+  delete player;
 }
 
 void Start(JNIEnv* env, jobject object) {
@@ -58,7 +65,10 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   jclass clazz = env->FindClass(kClassName);
   env->RegisterNatives(clazz, kNativeMethods, G_N_ELEMENTS(kNativeMethods));
 
+  sVm = vm;
   sHandleFieldID = env->GetFieldID(clazz, "handle_", "J");
+  sStateMethodID =
+      env->GetMethodID(clazz, "NativeStateChanged", "(ILjava/lang/String;)V");
 
   return JNI_VERSION_1_6;
 }

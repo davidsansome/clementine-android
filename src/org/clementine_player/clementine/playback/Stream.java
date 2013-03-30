@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.clementine_player.gstmediaplayer.MediaPlayer;
+import org.clementine_player.gstmediaplayer.MediaPlayer.Listener;
+import org.clementine_player.gstmediaplayer.MediaPlayer.State;
 
 import android.animation.Animator;
 import android.animation.Animator.AnimatorListener;
@@ -14,20 +16,7 @@ import android.media.AudioManager;
 import android.media.audiofx.Visualizer;
 import android.util.Log;
 
-public class Stream {
-  public enum State {
-    // Valid for:  current  desired
-    PREPARING, //  yes      no
-    PREPARED,  //  yes      yes
-    STARTED,   //  yes      yes
-    PAUSED,    //  yes      yes
-    COMPLETED, //  yes      no
-  }
-  
-  public interface Listener {
-    public void StreamStateChanged(State state);
-  }
-  
+public class Stream implements Listener {
   private MediaPlayer player_;
   private State current_state_;
   private State desired_state_;
@@ -45,7 +34,7 @@ public class Stream {
   public Stream(String url) {
     listeners_ = new ArrayList<Listener>();
     current_state_ = State.PREPARING;
-    desired_state_ = State.PREPARED;
+    desired_state_ = State.PAUSED;
     current_volume_ = 1.0f;
     
     stream_id_ = next_stream_id_ ++;
@@ -53,30 +42,29 @@ public class Stream {
     
     Log.i(log_tag_, "New stream for " + url);
     
-    player_ = new MediaPlayer(url);
-    player_.Start();
+    player_ = new MediaPlayer(url, this);
   }
   
   public void AddListener(Listener listener) {
     listeners_.add(listener);
-    listener.StreamStateChanged(current_state_);
+    listener.StreamStateChanged(current_state_, null);
   }
   
   public void RemoveListener(Listener listener) {
     listeners_.remove(listener);
   }
   
-  private void UpdateAllListeners() {
+  private void UpdateAllListeners(String message) {
     for (Listener listener : listeners_) {
-      listener.StreamStateChanged(current_state_);
+      listener.StreamStateChanged(current_state_, message);
     }
   }
   
-  private void SetCurrentState(State state) {
+  private void SetCurrentState(State state, String message) {
     Log.d(log_tag_, "Current state " + current_state_.name() +
                     " -> " + state.name());
     current_state_ = state;
-    UpdateAllListeners();
+    UpdateAllListeners(message);
   }
   
   private void SetDesiredState(State state) {
@@ -84,47 +72,46 @@ public class Stream {
                     " -> " + state.name());
     desired_state_ = state;
   }
-
-  /*@Override
-  public void onPrepared(MediaPlayer mp) {
-    switch (desired_state_) {
-      case STARTED:
-        player_.start();
-        SetCurrentState(State.STARTED);
-        
-        if (fade_in_desired_) {
-          fade_in_desired_ = false;
-          FadeTo(1.0f, fade_duration_msec_);
+  
+  @Override
+  public void StreamStateChanged(State state, String message) {
+    switch (state) {
+      case PAUSED:
+        switch (desired_state_) {
+          case PLAYING:
+            player_.Start();
+            
+            if (fade_in_desired_) {
+              fade_in_desired_ = false;
+              FadeTo(1.0f, fade_duration_msec_);
+            }
+            break;
+          default:
+            SetCurrentState(State.PAUSED, message);
+            break;
         }
         break;
-      case PAUSED:
-        player_.start();
-        player_.pause();
-        SetCurrentState(State.PAUSED);
+      case PLAYING:
+        SetCurrentState(State.PLAYING, message);
         break;
-      default:
-        SetCurrentState(State.PREPARED);
+      case COMPLETED:
+      case ERROR:
+        SetCurrentState(state, message);
+        Release();
         break;
     }
   }
 
-  @Override
-  public void onCompletion(MediaPlayer mp) {
-    SetCurrentState(State.COMPLETED);
-    Release();
-  }*/
-  
   public void Play() {
-    SetDesiredState(State.STARTED);
+    SetDesiredState(State.PLAYING);
     switch (current_state_) {
       case PREPARING:
-      case STARTED:
+      case PLAYING:
       case COMPLETED:
+      case ERROR:
         break;
-      case PREPARED:
       case PAUSED:
         player_.Start();
-        SetCurrentState(State.STARTED);
         
         if (fade_in_desired_) {
           fade_in_desired_ = false;
@@ -141,20 +128,14 @@ public class Stream {
       case PAUSED:
       case COMPLETED:
         break;
-      case PREPARED:
-        player_.Start();
+      case PLAYING:
         player_.Pause();
-        SetCurrentState(State.PAUSED);
-        break;
-      case STARTED:
-        player_.Pause();
-        SetCurrentState(State.PAUSED);
         break;
     }
   }
   
   public void PlayPause() {
-    if (current_state_ == State.STARTED) {
+    if (current_state_ == State.PLAYING) {
       Pause();
     } else {
       Play();
@@ -163,7 +144,7 @@ public class Stream {
   
   public void Release() {
     if (player_ != null) {
-      SetCurrentState(State.COMPLETED);
+      SetCurrentState(State.COMPLETED, null);
       player_.Release();
       player_ = null;
     }
@@ -216,11 +197,11 @@ public class Stream {
     current_volume_ = 0.0f;
     switch (current_state_) {
       case PREPARING:
-      case PREPARED:
+      case PAUSED:
         fade_in_desired_ = true;
         fade_duration_msec_ = duration_msec;
         break;
-      case STARTED:
+      case PLAYING:
         FadeTo(1.0f, duration_msec);
         break;
     }
@@ -229,11 +210,10 @@ public class Stream {
   public void FadeOutAndRelease(long duration_msec) {
     switch (current_state_) {
       case PREPARING:
-      case PREPARED:
       case PAUSED:
         Release();
         break;
-      case STARTED:
+      case PLAYING:
         FadeTo(0.0f, duration_msec);
         break;
     }
