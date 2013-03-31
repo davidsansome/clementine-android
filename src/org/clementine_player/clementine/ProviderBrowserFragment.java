@@ -85,7 +85,7 @@ public class ProviderBrowserFragment
         
         if (image.hasUrl()) {
           Application.instance().image_loader().DisplayImage(
-              image.getUrl(), view);          
+              image.getUrl(), view);
         } else if (image.hasResource()) {
           view.setImageResource(image.getResource());
         } else if (image.hasData()) {
@@ -119,7 +119,7 @@ public class ProviderBrowserFragment
   private String provider_name_;
   private ProviderInterface provider_;
   private String parent_key_;
-
+  
   @Override
   public void onCreate(Bundle saved_instance_state) {
     super.onCreate(saved_instance_state);
@@ -194,27 +194,11 @@ public class ProviderBrowserFragment
       return;
     }
     
-    // TODO(dsansome): hack.
-    connection_ = new ServiceConnection() {
-      @Override
-      public void onServiceDisconnected(ComponentName name) {
-        Log.i("ServiceConnection", "Disconnected");
-      }
-      
-      @Override
-      public void onServiceConnected(ComponentName name, IBinder service) {
-        Log.i("ServiceConnection", "Connected");
-        
-        PlaybackService playback_service =
-            ((PlaybackBinder) service).GetService();
-        try {
-          playback_service.StartNewSong(new URI(item.getMediaUri()));
-        } catch (URISyntaxException e) {
-          Log.w(TAG, "Invalid URI: " + item.getMediaUri());
-        }
-      }
-    };
-    Intent intent = new Intent(getActivity(), PlaybackService.class);
-    getActivity().bindService(intent, connection_, Context.BIND_AUTO_CREATE);
+    PB.BrowserItemList.Builder list_builder = PB.BrowserItemList.newBuilder();
+    list_builder.addItems(item);
+    PB.BrowserItemList items = list_builder.build();
+    
+    Application.instance().playlist_adder().AddToPlaylist(
+        provider_.LoadSongs(getActivity(), items));
   }
 }

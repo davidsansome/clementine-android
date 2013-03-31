@@ -4,7 +4,7 @@ import org.clementine_player.clementine.analyzers.BaseAnalyzer;
 import org.clementine_player.clementine.analyzers.BlockAnalyzer;
 import org.clementine_player.clementine.playback.PlaybackService;
 import org.clementine_player.clementine.playback.PlaybackService.PlaybackBinder;
-import org.clementine_player.clementine.playback.Stream;
+import org.clementine_player.clementine.playlist.PlaylistContainer;
 import org.clementine_player.gstmediaplayer.MediaPlayer;
 
 import android.content.ComponentName;
@@ -12,12 +12,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.graphics.PixelFormat;
-import android.media.audiofx.Visualizer;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
-import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.ImageButton;
@@ -35,6 +35,7 @@ public class MainActivity
   private ImageButton stop_button_;
   private ProgressBar buffering_bar_;
   private SurfaceView analyzer_view_;
+  private PlaylistContainer playlist_containter_;
   
   private BaseAnalyzer analyzer_;
   
@@ -50,16 +51,16 @@ public class MainActivity
 
     @Override
     public void onServiceDisconnected(ComponentName arg0) {
-      playback_service_.RemoveStreamListener(MainActivity.this);
-      playback_service_.RemoveAnalyzerListener(MainActivity.this);
-      playback_service_ = null;
+      if (playback_service_ != null) {
+        playback_service_.RemoveStreamListener(MainActivity.this);
+        playback_service_.RemoveAnalyzerListener(MainActivity.this);
+        playback_service_ = null;
+      }
     }
   };
   
   @Override
   public void onCreate(Bundle saved_instance_state) {
-    Application.instance().set_main_activity(this);
-    
     super.onCreate(saved_instance_state);
     setContentView(R.layout.main);
     
@@ -74,6 +75,10 @@ public class MainActivity
     analyzer_view_.getHolder().setFormat(PixelFormat.TRANSPARENT);
     
     analyzer_ = new BlockAnalyzer(this, analyzer_view_.getHolder());
+    
+    playlist_containter_ = (PlaylistContainer) findViewById(R.id.playlist);
+    
+    Application.instance().Init(this, playlist_containter_.adapter());
     
     // Create the browser fragment.
     if (saved_instance_state == null) {
@@ -102,8 +107,8 @@ public class MainActivity
   public void onStop() {
     super.onStop();
     
-    unbindService(playback_connection_);
     playback_connection_.onServiceDisconnected(null);
+    unbindService(playback_connection_);
   }
 
   @Override
@@ -178,5 +183,19 @@ public class MainActivity
   @Override
   public void UpdateFft(float[] fft) {
     analyzer_.UpdateFft(fft);
+  }
+  
+  @Override
+  public boolean onCreateOptionsMenu(Menu menu) {
+    getMenuInflater().inflate(R.menu.mainmenu, menu);
+    return true;
+  }
+  
+  public void EditPlaylistClicked(MenuItem item) {
+    
+  }
+  
+  public void ClearPlaylistClicked(MenuItem item) {
+    
   }
 }

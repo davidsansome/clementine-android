@@ -1,6 +1,7 @@
 package org.clementine_player.clementine.playback;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,14 +65,22 @@ public class PlaybackService
     return new PlaybackBinder();
   }
   
-  public void StartNewSong(URI uri) {
+  public void StartNewSongFromUri(String uri_string) {
+    URI uri;
+    try {
+      uri = new URI(uri_string);
+    } catch (URISyntaxException e) {
+      StreamStateChanged(MediaPlayer.State.ERROR, "Invalid URI: " + uri_string);
+      return;
+    }
+    
     // Check whether this URI scheme belongs to a provider.
     ProviderInterface provider =
         Application.instance().provider_manager().ProviderByURIScheme(uri);
     if (provider == null) {
       // This must be a http:// or file:// URI, in which case we can load it
       // directly.
-      StartNewSong(uri.toString());
+      StartNewSongRaw(uri_string);
       return;
     }
     
@@ -80,14 +89,14 @@ public class PlaybackService
       @Override
       public void onLoadComplete(Loader<URL> loader, URL url) {
         if (url != null) {
-          StartNewSong(url.toString());
+          StartNewSongRaw(url.toString());
         }
       }
     });
     loader.startLoading();
   }
   
-  public void StartNewSong(String url) {
+  public void StartNewSongRaw(String url) {
     SwapStream(new Stream(url, this));
     current_stream_.FadeIn(kFadeDurationMsec);
     current_stream_.Play();
@@ -150,5 +159,13 @@ public class PlaybackService
     for (MediaPlayer.AnalyzerListener listener : analyzer_listeners_) {
       listener.UpdateFft(data);
     }
+  }
+  
+  public MediaPlayer.State current_state() {
+    if (current_stream_ == null) {
+      return MediaPlayer.State.COMPLETED;
+    }
+    
+    return current_stream_.current_state();
   }
 }

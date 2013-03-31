@@ -1,5 +1,6 @@
 package org.clementine_player.clementine;
 
+import org.clementine_player.clementine.playlist.PlaylistAdapter;
 import org.clementine_player.clementine.playlist_parsers.ParserManager;
 import org.clementine_player.clementine.providers.ProviderManager;
 
@@ -20,6 +21,8 @@ public class Application extends android.app.Application {
   private ParserManager playlist_parser_manager_;
   private ImageLoader image_loader_;
   private Activity main_activity_;
+  private PlaylistAdapter playlist_;
+  private PlaylistAdder playlist_adder_;
   
   public void onCreate() {
     super.onCreate();
@@ -65,11 +68,17 @@ public class Application extends android.app.Application {
     return playlist_parser_manager_;
   }
   
-  public void set_main_activity(Activity activity) {
-    main_activity_ = activity;
+  public void Init(Activity main_activity, PlaylistAdapter playlist) {
+    main_activity_ = main_activity;
+    playlist_ = playlist;
+    playlist_adder_ = new PlaylistAdder(context_, playlist);
   }
   
   public void RunOnUiThread(Runnable runnable) {
     main_activity_.runOnUiThread(runnable);
+  }
+  
+  public PlaylistAdder playlist_adder() {
+    return playlist_adder_;
   }
 }
