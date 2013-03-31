@@ -145,10 +145,6 @@ public abstract class BaseAnalyzer
   protected abstract void SizeChanged(int width, int height);
   protected abstract void Update(float[] fft, Canvas canvas);
   
-  protected int update_interval_msec() {
-    return 1000 / PlaybackService.kVisualizerUpdateIntervalHz;
-  }
-  
   protected float screen_density() {
     WindowManager window_manager =
         (WindowManager) context_.getSystemService(Context.WINDOW_SERVICE);

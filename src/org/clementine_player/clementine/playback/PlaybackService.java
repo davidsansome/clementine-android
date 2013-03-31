@@ -8,16 +8,13 @@ import java.util.List;
 import org.clementine_player.clementine.Application;
 import org.clementine_player.clementine.providers.ProviderInterface;
 import org.clementine_player.gstmediaplayer.MediaPlayer;
-import org.clementine_player.gstmediaplayer.MediaPlayer.AnalyzerListener;
 
 import android.app.Service;
 import android.content.Intent;
-import android.media.audiofx.Visualizer;
 import android.os.Binder;
 import android.os.IBinder;
 import android.support.v4.content.Loader;
 import android.support.v4.content.Loader.OnLoadCompleteListener;
-import android.util.Log;
 
 public class PlaybackService
     extends Service
@@ -37,8 +34,6 @@ public class PlaybackService
   
   // TODO(dsansome): make these configurable.
   public static final long kFadeDurationMsec = 2000L;
-  public static final int kVisualizerCaptureSize = 256;
-  public static final int kVisualizerUpdateIntervalHz = 20;  // 20
   
   @Override
   public void onCreate() {
