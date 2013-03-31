@@ -85,11 +85,12 @@ public class MediaStoreProvider implements ProviderInterface {
         MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
         new String[] {
             MediaStore.MediaColumns.TITLE,
-            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.Audio.AlbumColumns.ALBUM,
             MediaStore.MediaColumns.DATA,
+            MediaStore.Audio.ArtistColumns.ARTIST,
         },
-        null,
-        null,
+        MediaStore.Audio.AlbumColumns.ALBUM_KEY + " = ?",
+        new String[]{key},
         MediaStore.Audio.Media.DEFAULT_SORT_ORDER
     );
     
@@ -101,6 +102,8 @@ public class MediaStoreProvider implements ProviderInterface {
       builder.setText2(cursor.getString(1));
       builder.setMediaUri(
           Uri.fromFile(new File(cursor.getString(2))).toString());
+      PB.Song.Builder metadata = builder.getMetadataBuilder();
+      metadata.setArtist(cursor.getString(3));
     }
     
     return ret.build();
@@ -108,8 +111,21 @@ public class MediaStoreProvider implements ProviderInterface {
 
   @Override
   public Loader<PB.SongList> LoadSongs(
-      Context context, PB.BrowserItemList items) {
-    return null;
+      Context context, final PB.BrowserItemList items) {
+    return new Loader<PB.SongList>(context) {
+      @Override
+      protected void onStartLoading() {
+        PB.SongList.Builder ret = PB.SongList.newBuilder();
+        for (PB.BrowserItem item: items.getItemsList()) {
+          PB.Song.Builder song = ret.addSongsBuilder();
+          song.setArtist(item.getMetadata().getArtist());
+          song.setTitle(item.getText1());
+          song.setAlbum(item.getText2());
+          song.setUri(item.getMediaUri());
+        }
+        deliverResult(ret.build());
+      }
+    };
   }
 
   @Override

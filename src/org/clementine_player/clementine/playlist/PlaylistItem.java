@@ -5,6 +5,7 @@ import org.clementine_player.clementine.PB;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.text.TextUtils;
 import android.text.method.SingleLineTransformationMethod;
 import android.view.Gravity;
 import android.view.View;
@@ -89,9 +90,10 @@ public class PlaylistItem extends LinearLayout {
   
   private View ViewForColumn(Column column) {
     TextView ret = new TextView(getContext());
-    ret.setTransformationMethod(new SingleLineTransformationMethod());
+    ret.setSingleLine(true);
     ret.setTextSize(14.0f);
     ret.setGravity(Gravity.CENTER_VERTICAL);
+    ret.setEllipsize(TextUtils.TruncateAt.END);
     
     if (song_ == null) {
       ret.setText(HeaderTextForColumn(column));
