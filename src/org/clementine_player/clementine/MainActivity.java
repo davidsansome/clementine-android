@@ -11,6 +11,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.PixelFormat;
 import android.media.audiofx.Visualizer;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -68,6 +69,9 @@ public class MainActivity
     stop_button_ = (ImageButton) findViewById(R.id.stop);
     buffering_bar_ = (ProgressBar) findViewById(R.id.buffering_bar);
     analyzer_view_ = (SurfaceView) findViewById(R.id.analyzer);
+    
+    analyzer_view_.setZOrderOnTop(true);  // WTF 
+    analyzer_view_.getHolder().setFormat(PixelFormat.TRANSPARENT);
     
     analyzer_ = new BlockAnalyzer(this, analyzer_view_.getHolder());
     

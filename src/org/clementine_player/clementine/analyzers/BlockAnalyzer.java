@@ -7,6 +7,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.util.Log;
 import android.view.SurfaceHolder;
@@ -67,10 +68,6 @@ public class BlockAnalyzer extends BaseAnalyzer {
     fade_bitmaps_ = CreateFadeBitmaps();
   }
   
-  private int BackgroundColour() {
-    return Color.BLACK;
-  }
-  
   private float[] ForegroundColourHSV() {
     return new float[]{198f, 0.80f, 0.90f};
   }
@@ -86,7 +83,7 @@ public class BlockAnalyzer extends BaseAnalyzer {
     Paint paint = new Paint();
     
     // Fill the image with the background colour.
-    paint.setColor(BackgroundColour());
+    paint.setColor(Color.TRANSPARENT);
     rect.set(0, 0, ret.getWidth(), ret.getHeight());
     canvas.drawRect(rect, paint);
     
@@ -112,7 +109,7 @@ public class BlockAnalyzer extends BaseAnalyzer {
     Rect rect = new Rect();
     Paint paint = new Paint();
     
-    final float[] initial_hsv = ForegroundColourHSV();
+    final float[] hsv = ForegroundColourHSV();
     
     Bitmap[] ret = new Bitmap[kFadeSize];
     for (int i=0 ; i<kFadeSize ; ++i) {
@@ -123,14 +120,14 @@ public class BlockAnalyzer extends BaseAnalyzer {
       Canvas canvas = new Canvas(bitmap);
       
       // Fill the image with the background colour.
-      paint.setColor(BackgroundColour());
+      paint.setColor(Color.TRANSPARENT);
       rect.set(0, 0, bitmap.getWidth(), bitmap.getHeight());
       canvas.drawRect(rect, paint);
       
-      float[] hsv = initial_hsv.clone();
-      hsv[2] *= (float) ((1.0 - Math.log10(kFadeSize - i) / Math.log10(kFadeSize)));
+      int alpha = (int)
+          ((1.0 - Math.log10(kFadeSize - i) / Math.log10(kFadeSize)) * 127);
 
-      paint.setColor(Color.HSVToColor(hsv));
+      paint.setColor(Color.HSVToColor(alpha, hsv));
       
       // Draw each block
       for (int y=0 ; y<rows_ ; ++y) {
@@ -156,9 +153,7 @@ public class BlockAnalyzer extends BaseAnalyzer {
     
     int pixel_x = 0;
     
-    Paint background = new Paint();
-    background.setColor(Color.BLACK);
-    canvas.drawRect(new Rect(0, 0, canvas.getWidth(), canvas.getHeight()), background);
+    canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.SRC);
     
     for (int x=0 ; x<columns_ ; ++x) {
       // TODO(dsansome): interpolate instead.

@@ -8,6 +8,9 @@ import org.clementine_player.gstmediaplayer.MediaPlayer;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.SurfaceHolder;
@@ -82,9 +85,12 @@ public abstract class BaseAnalyzer
             if (data_ != null && data_updated_) {
               Canvas canvas = holder_.lockCanvas();
               if (canvas != null) {
-                Update(data_, canvas);
-                data_updated_ = false;
-                holder_.unlockCanvasAndPost(canvas);
+                try {
+                  Update(data_, canvas);
+                } finally {
+                  data_updated_ = false;
+                  holder_.unlockCanvasAndPost(canvas);
+                }
               }
             }
           }
@@ -111,8 +117,25 @@ public abstract class BaseAnalyzer
     }
   }
   
+  private void ClearCanvas() {
+    Canvas canvas = holder_.lockCanvas();
+    if (canvas != null) {
+      try {
+        Paint paint = new Paint();
+        paint.setColor(Color.TRANSPARENT);
+        canvas.drawRect(
+            new Rect(0, 0, canvas.getWidth(), canvas.getHeight()),
+            paint);
+      } finally {
+        holder_.unlockCanvasAndPost(canvas);
+      }
+    }
+  }
+  
   @Override
   public void surfaceCreated(SurfaceHolder holder) {
+    ClearCanvas();
+
     // Start the thread updating the surface.
     active_ = true;
   }
