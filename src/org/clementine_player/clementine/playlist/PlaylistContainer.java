@@ -9,8 +9,10 @@ import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewGroup.LayoutParams;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 
@@ -44,8 +46,15 @@ public class PlaylistContainer
     
     view_.setOnItemClickListener(this);
     
+    ImageView separator = new ImageView(getContext());
+    separator.setImageResource(android.R.drawable.divider_horizontal_dark);
+    separator.setScaleType(ImageView.ScaleType.FIT_XY);
+    separator.setLayoutParams(
+        new LayoutParams(LayoutParams.MATCH_PARENT, 1));
+    
     addView(header_, new LayoutParams(
         LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, 0.0f));
+    addView(separator);
     addView(view_, new LayoutParams(
         LayoutParams.MATCH_PARENT, 0, 1.0f));
   }
