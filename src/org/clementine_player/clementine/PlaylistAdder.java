@@ -5,6 +5,7 @@ import java.net.URI;
 import org.clementine_player.clementine.playback.PlaybackService;
 import org.clementine_player.clementine.playback.PlaybackService.PlaybackBinder;
 import org.clementine_player.clementine.playlist.PlaylistAdapter;
+import org.clementine_player.gstmediaplayer.MediaPlayer;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -37,21 +38,29 @@ public class PlaylistAdder
     }
   }
   
-  private void PlayIfQuiet(final String uri) {
+  public void PlayNow(String uri) {
+    Play(uri, false);
+  }
+  
+  public void PlayIfQuiet(String uri) {
+    Play(uri, true);
+  }
+  
+  private void Play(final String uri, final boolean only_if_quiet) {
     ServiceConnection connection = new ServiceConnection() {
       @Override
       public void onServiceConnected(ComponentName name, IBinder binder) {
         PlaybackService service = ((PlaybackBinder) binder).GetService();
-        switch (service.current_state()) {
-          case PLAYING:
-          case PAUSED:
-          case PREPARING:
-            break;
-          case COMPLETED:
-          case ERROR:
-            service.StartNewSongFromUri(uri);
-            break;
+        
+        if (only_if_quiet) {
+          MediaPlayer.State state = service.current_state();
+          if (state != MediaPlayer.State.COMPLETED &&
+              state != MediaPlayer.State.ERROR) {
+            return;
+          }
         }
+        
+        service.StartNewSongFromUri(uri);
         
         context_.unbindService(this);
       }

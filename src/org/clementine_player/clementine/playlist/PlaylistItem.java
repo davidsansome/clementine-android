@@ -2,12 +2,10 @@ package org.clementine_player.clementine.playlist;
 
 import org.clementine_player.clementine.PB;
 
-import android.R;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.text.method.SingleLineTransformationMethod;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;

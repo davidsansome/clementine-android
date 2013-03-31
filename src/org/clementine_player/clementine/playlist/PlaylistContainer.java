@@ -1,15 +1,22 @@
 package org.clementine_player.clementine.playlist;
 
+import org.clementine_player.clementine.Application;
+import org.clementine_player.clementine.PB;
 import org.clementine_player.clementine.playlist.PlaylistItem.Column;
 
 import android.content.Context;
 import android.util.AttributeSet;
 import android.util.TypedValue;
+import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 
-public class PlaylistContainer extends LinearLayout {
+public class PlaylistContainer
+    extends LinearLayout
+    implements OnItemClickListener {
   private Column[] columns_;
   private PlaylistItem header_;
   private PlaylistAdapter adapter_;
@@ -35,6 +42,8 @@ public class PlaylistContainer extends LinearLayout {
     view_ = new ListView(getContext());
     view_.setAdapter(adapter_);
     
+    view_.setOnItemClickListener(this);
+    
     addView(header_, new LayoutParams(
         LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, 0.0f));
     addView(view_, new LayoutParams(
@@ -43,5 +52,12 @@ public class PlaylistContainer extends LinearLayout {
 
   public PlaylistAdapter adapter() {
     return adapter_;
+  }
+
+  @Override
+  public void onItemClick(
+      AdapterView<?> parent, View view, int position, long id) {
+    PB.Song song = adapter_.GetSong(position);
+    Application.instance().playlist_adder().PlayNow(song.getUri());
   }
 }

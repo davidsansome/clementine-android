@@ -196,6 +196,6 @@ public class MainActivity
   }
   
   public void ClearPlaylistClicked(MenuItem item) {
-    
+    playlist_containter_.adapter().Clear();
   }
 }

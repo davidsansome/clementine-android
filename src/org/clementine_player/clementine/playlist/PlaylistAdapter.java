@@ -123,6 +123,12 @@ public class PlaylistAdapter implements ListAdapter {
     }
   }
   
+  private void InvalidateObservers() {
+    for (DataSetObserver observer : observers_) {
+      observer.onInvalidated();
+    }
+  }
+  
   public void InsertSong(PB.Song song, int position) { 
     items_.add(position, SongToItem(song));
     NotifyObservers();
@@ -141,5 +147,11 @@ public class PlaylistAdapter implements ListAdapter {
   
   public void AppendSongs(PB.SongList songs) {
     InsertSongs(songs, items_.size());
+  }
+  
+  public void Clear() {
+    items_.clear();
+    next_id_ = 0;
+    InvalidateObservers();
   }
 }
