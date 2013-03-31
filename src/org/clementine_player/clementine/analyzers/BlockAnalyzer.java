@@ -16,8 +16,8 @@ public class BlockAnalyzer extends BaseAnalyzer {
   private static final int kBaseBlockHeight = 2;
   private static final int kBaseBlockSpacing = 1;
   private static final int kFadeSize = 90;
-  private static final int kFallingLineRate = 1;
-  private static final int kFadeIntensityRate = 1;
+  private static final float kFallingLineRate = 0.5f;
+  private static final float kFadeIntensityRate = 0.5f;
   
   private int block_width_;
   private int block_height_;
@@ -26,9 +26,9 @@ public class BlockAnalyzer extends BaseAnalyzer {
   private int rows_;
   private int columns_;
   private float[] row_scale_;
-  private int[] falling_line_;
+  private float[] falling_line_;
   private int[] fade_pos_;
-  private int[] fade_intensity_;
+  private float[] fade_intensity_;
   private Bitmap bar_bitmap_;
   private Bitmap[] fade_bitmaps_;
   
@@ -55,9 +55,13 @@ public class BlockAnalyzer extends BaseAnalyzer {
     }
     row_scale_[rows_] = 0;
     
-    falling_line_ = new int[columns_];
+    falling_line_ = new float[columns_];
     fade_pos_ = new int[columns_];
-    fade_intensity_ = new int[columns_];
+    fade_intensity_ = new float[columns_];
+    
+    for (int i=0 ; i<columns_ ; ++i) {
+      fade_pos_[i] = rows_;
+    }
     
     bar_bitmap_ = CreateBarBitmap();
     fade_bitmaps_ = CreateFadeBitmaps();
@@ -163,14 +167,16 @@ public class BlockAnalyzer extends BaseAnalyzer {
       }
       
       int y = 0;
-      while (fft[x] < row_scale_[y]) {
+      while (y < row_scale_.length && fft[x] < row_scale_[y]) {
         y ++;
       }
       
       if (y > falling_line_[x]) {
-        y = falling_line_[x] + kFallingLineRate;
+        falling_line_[x] += kFallingLineRate;
+        y = (int) falling_line_[x];
+      } else {
+        falling_line_[x] = y;
       }
-      falling_line_[x] = y;
       
       if (y <= fade_pos_[x]) {
         fade_pos_[x] = y;
@@ -178,7 +184,7 @@ public class BlockAnalyzer extends BaseAnalyzer {
       }
       
       if (fade_intensity_[x] > 0) {
-        int fade_index = fade_intensity_[x] -= kFadeIntensityRate;
+        int fade_index = (int)(fade_intensity_[x] -= kFadeIntensityRate);
         int fade_pixel_y = fade_pos_[x] * (block_height_ + block_spacing_);
         
         source_rect.set(0, 0, block_width_, height - fade_pixel_y);
