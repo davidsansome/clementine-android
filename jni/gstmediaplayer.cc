@@ -59,6 +59,10 @@ void FadeVolumeTo(JNIEnv* env, jobject object, jfloat volume, jlong duration_ms)
   This(env, object)->FadeVolumeTo(volume, duration_ms);
 }
 
+void SetAnalyzerEnabled(JNIEnv* env, jobject object, jboolean enabled) {
+  This(env, object)->SetAnalyzerEnabled(enabled != JNI_FALSE);
+}
+
 const JNINativeMethod kNativeMethods[] = {
   {"CreateNativeInstance", "(Ljava/lang/String;)J", reinterpret_cast<void*>(CreateNativeInstance)},
   {"DestroyNativeInstance", "()V", reinterpret_cast<void*>(DestroyNativeInstance)},
@@ -66,6 +70,7 @@ const JNINativeMethod kNativeMethods[] = {
   {"Pause", "()V", reinterpret_cast<void*>(Pause)},
   {"SetVolume", "(F)V", reinterpret_cast<void*>(SetVolume)},
   {"FadeVolumeTo", "(FJ)V", reinterpret_cast<void*>(FadeVolumeTo)},
+  {"SetAnalyzerEnabled", "(Z)V", reinterpret_cast<void*>(SetAnalyzerEnabled)},
 };
 
 }  // namespace

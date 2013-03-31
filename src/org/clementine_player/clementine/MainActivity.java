@@ -16,6 +16,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
+import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.ImageButton;
@@ -49,7 +50,7 @@ public class MainActivity
     @Override
     public void onServiceDisconnected(ComponentName arg0) {
       playback_service_.RemoveStreamListener(MainActivity.this);
-      playback_service_.AddAnalyzerListener(MainActivity.this);
+      playback_service_.RemoveAnalyzerListener(MainActivity.this);
       playback_service_ = null;
     }
   };
@@ -91,6 +92,14 @@ public class MainActivity
     // Bind to the playback service.
     Intent intent = new Intent(this, PlaybackService.class);
     bindService(intent, playback_connection_, Context.BIND_AUTO_CREATE);
+  }
+  
+  @Override
+  public void onStop() {
+    super.onStop();
+    
+    unbindService(playback_connection_);
+    playback_connection_.onServiceDisconnected(null);
   }
 
   @Override

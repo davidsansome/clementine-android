@@ -17,6 +17,7 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.support.v4.content.Loader;
 import android.support.v4.content.Loader.OnLoadCompleteListener;
+import android.util.Log;
 
 public class PlaybackService
     extends Service
@@ -32,7 +33,6 @@ public class PlaybackService
   
   private List<MediaPlayer.StateListener> stream_listeners_;
   private List<MediaPlayer.AnalyzerListener> analyzer_listeners_;
-  private Visualizer current_visualizer_;
   private Stream current_stream_;
   
   // TODO(dsansome): make these configurable.
@@ -44,6 +44,13 @@ public class PlaybackService
   public void onCreate() {
     stream_listeners_ = new ArrayList<MediaPlayer.StateListener>();
     analyzer_listeners_ = new ArrayList<MediaPlayer.AnalyzerListener>();
+    
+    startService(new Intent(this, getClass()));
+  }
+  
+  @Override
+  public void onDestroy() {
+    Stop();
   }
   
   public void Stop() {
@@ -98,22 +105,22 @@ public class PlaybackService
       current_stream_.FadeOutAndRelease(kFadeDurationMsec);
     }
     
-    // Remove the current visualizer.
-    if (current_visualizer_ != null) {
-      current_visualizer_.release();
-      current_visualizer_ = null;
-    }
-    
     // Set the new stream.
     current_stream_ = new_stream;
     
     if (current_stream_ != null) {
       current_stream_.AddListener(this);
+      if (!analyzer_listeners_.isEmpty()) {
+        current_stream_.SetAnalyzerEnabled(true);
+      }
     }
   }
   
   public void AddStreamListener(MediaPlayer.StateListener listener) {
     stream_listeners_.add(listener);
+    if (current_stream_ != null) {
+      listener.StreamStateChanged(current_stream_.current_state(), null);
+    }
   }
   
   public void RemoveStreamListener(MediaPlayer.StateListener listener) {
@@ -129,10 +136,18 @@ public class PlaybackService
   
   public void AddAnalyzerListener(MediaPlayer.AnalyzerListener listener) {
     analyzer_listeners_.add(listener);
+
+    if (current_stream_ != null) {
+      current_stream_.SetAnalyzerEnabled(true);
+    }
   }
   
   public void RemoveAnalyzerListener(MediaPlayer.AnalyzerListener listener) {
     analyzer_listeners_.remove(listener);
+
+    if (current_stream_ != null && analyzer_listeners_.isEmpty()) {
+      current_stream_.SetAnalyzerEnabled(false);
+    }
   }
   
   @Override

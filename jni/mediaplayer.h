@@ -45,6 +45,7 @@ class MediaPlayer {
   void Pause();
   void SetVolume(float volume);
   void FadeVolumeTo(float volume, int64_t duration_ms);
+  void SetAnalyzerEnabled(bool enabled);
 
   // Must be kept in sync with MediaPlayer.java
   enum State {
@@ -107,6 +108,7 @@ class MediaPlayer {
   float fade_volume_step_;
   u_int32_t fade_volume_timeout_id_;
 
+  bool analyzer_enabled_;
   FHT fht_;
   float* analyzer_buffer_;
 };

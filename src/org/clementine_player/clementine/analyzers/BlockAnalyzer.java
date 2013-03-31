@@ -1,5 +1,7 @@
 package org.clementine_player.clementine.analyzers;
 
+import java.util.Arrays;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -59,9 +61,7 @@ public class BlockAnalyzer extends BaseAnalyzer {
     fade_pos_ = new int[columns_];
     fade_intensity_ = new float[columns_];
     
-    for (int i=0 ; i<columns_ ; ++i) {
-      fade_pos_[i] = rows_;
-    }
+    Arrays.fill(falling_line_, rows_);
     
     bar_bitmap_ = CreateBarBitmap();
     fade_bitmaps_ = CreateFadeBitmaps();

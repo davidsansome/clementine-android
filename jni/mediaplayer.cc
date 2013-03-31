@@ -47,6 +47,7 @@ MediaPlayer::MediaPlayer(JavaVM* vm,
       target_volume_(0.0),
       fade_volume_step_(0.0),
       fade_volume_timeout_id_(0),
+      analyzer_enabled_(false),
       fht_(8),
       analyzer_buffer_(new float[fht_.size()]) {
   // Create a native byte buffer for the analyzer data.
@@ -167,8 +168,13 @@ void CopyBufferData(
 
 bool MediaPlayer::BufferCallback(
     GstPad* pad, GstBuffer* buffer, MediaPlayer* self) {
+  if (!self->analyzer_enabled_) {
+    return true;
+  }
+
   if (!buffer || !buffer->caps || !buffer->caps->structs ||
       buffer->caps->structs->len < 1) {
+    LOG(ERROR, "Buffer is null or has no caps");
     return false;
   }
 
@@ -440,4 +446,11 @@ int MediaPlayer::FadeVolumeTimeout(void* self_vp) {
   g_object_set(self->pipeline_, "volume", gdouble(self->current_volume_), NULL);
 
   return ret;
+}
+
+void MediaPlayer::SetAnalyzerEnabled(bool enabled) {
+  if (analyzer_enabled_ != enabled) {
+    analyzer_enabled_ = enabled;
+    LOG(INFO, "Analayzer enabled = %s", enabled ? "true" : "false");
+  }
 }

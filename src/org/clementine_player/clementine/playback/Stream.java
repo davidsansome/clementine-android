@@ -180,4 +180,8 @@ public class Stream implements StateListener, FadeListener {
       Release();
     }
   }
+  
+  public void SetAnalyzerEnabled(boolean enabled) {
+    player_.SetAnalyzerEnabled(enabled);
+  }
 }

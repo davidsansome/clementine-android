@@ -1,5 +1,8 @@
 package org.clementine_player.clementine.analyzers;
 
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.clementine_player.clementine.playback.PlaybackService;
 import org.clementine_player.gstmediaplayer.MediaPlayer;
 
@@ -26,6 +29,8 @@ public abstract class BaseAnalyzer
   private float[] data_;
   private boolean data_updated_;
   
+  private Lock subclass_ready_lock_;
+  
   private int current_width_;
   private int current_height_;
   
@@ -39,6 +44,8 @@ public abstract class BaseAnalyzer
     holder_.addCallback(this);
     
     data_mutex_ = new Object();
+    subclass_ready_lock_ = new ReentrantLock();
+    subclass_ready_lock_.lock();
     
     // If the surface is already created, start right away.
     if (holder_.getSurface() != null) {
@@ -69,15 +76,20 @@ public abstract class BaseAnalyzer
         }
         
         // Draw on the canvas.
-        synchronized (data_mutex_) {
-          if (data_ != null && data_updated_) {
-            Canvas canvas = holder_.lockCanvas();
-            if (canvas != null) {
-              Update(data_, canvas);
-              data_updated_ = false;
-              holder_.unlockCanvasAndPost(canvas);
+        subclass_ready_lock_.lock();
+        try {
+          synchronized (data_mutex_) {
+            if (data_ != null && data_updated_) {
+              Canvas canvas = holder_.lockCanvas();
+              if (canvas != null) {
+                Update(data_, canvas);
+                data_updated_ = false;
+                holder_.unlockCanvasAndPost(canvas);
+              }
             }
           }
+        } finally {
+          subclass_ready_lock_.unlock();
         }
       }
     }
@@ -92,14 +104,9 @@ public abstract class BaseAnalyzer
       
       SizeChanged(width, height);
       
-      synchronized (data_mutex_) {
-        if (data_ != null) {
-          Canvas canvas = holder_.lockCanvas();
-          if (canvas != null) {
-            Update(data_, canvas);
-            holder_.unlockCanvasAndPost(canvas);
-          }
-        }
+      try {
+        subclass_ready_lock_.unlock();
+      } catch (IllegalMonitorStateException e) {
       }
     }
   }

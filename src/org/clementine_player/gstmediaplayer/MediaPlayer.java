@@ -42,6 +42,7 @@ public class MediaPlayer {
   public native void Pause();
   public native void SetVolume(float volume);
   public native void FadeVolumeTo(float volume, long duration_ms);
+  public native void SetAnalyzerEnabled(boolean enabled);
   
   static {
     System.loadLibrary("gstreamer_android");
