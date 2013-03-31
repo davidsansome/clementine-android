@@ -1,5 +1,9 @@
 package org.clementine_player.gstmediaplayer;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+
 import org.clementine_player.clementine.Application;
 
 import android.app.Activity;
@@ -27,6 +31,10 @@ public class MediaPlayer {
     public void FadeFinished();
   }
   
+  public interface AnalyzerListener {
+    public void UpdateFft(float[] amplitudes);
+  }
+  
   private native long CreateNativeInstance(String url);
   private native void DestroyNativeInstance();
   
@@ -52,16 +60,27 @@ public class MediaPlayer {
   // A pointer to the native instance.
   private long handle_ = 0;
   
+  // Native buffers containing analyzer data.  These must only be accessed from
+  // the NativeAnalyzerReady callback.
+  private ByteBuffer analyzer_buffer_;
+  private FloatBuffer analyzer_buffer_float_;
+  
   private StateListener state_listener_;
   private FadeListener fade_listener_;
+  private AnalyzerListener analyzer_listener_;
   
   public MediaPlayer(
       String url,
       StateListener state_listener,
-      FadeListener fade_listener) {
+      FadeListener fade_listener,
+      AnalyzerListener analyzer_listener) {
     state_listener_ = state_listener;
     fade_listener_ = fade_listener;
+    analyzer_listener_ = analyzer_listener;
     handle_ = CreateNativeInstance(url);
+    
+    analyzer_buffer_.order(ByteOrder.nativeOrder());
+    analyzer_buffer_float_ = analyzer_buffer_.asFloatBuffer();
   }
   
   public void Release() {
@@ -93,5 +112,13 @@ public class MediaPlayer {
         fade_listener_.FadeFinished();
       }
     });
+  }
+  
+  private void NativeAnalyzerReady() {
+    float[] data = new float[analyzer_buffer_float_.capacity()];
+    analyzer_buffer_float_.position(0);
+    analyzer_buffer_float_.get(data);
+    
+    analyzer_listener_.UpdateFft(data);
   }
 }

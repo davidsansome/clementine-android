@@ -8,6 +8,7 @@ import java.util.List;
 import org.clementine_player.clementine.Application;
 import org.clementine_player.clementine.providers.ProviderInterface;
 import org.clementine_player.gstmediaplayer.MediaPlayer;
+import org.clementine_player.gstmediaplayer.MediaPlayer.AnalyzerListener;
 
 import android.app.Service;
 import android.content.Intent;
@@ -16,26 +17,21 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.support.v4.content.Loader;
 import android.support.v4.content.Loader.OnLoadCompleteListener;
-import android.util.Log;
 
 public class PlaybackService
     extends Service
     implements MediaPlayer.StateListener,
-               Visualizer.OnDataCaptureListener {
+               MediaPlayer.AnalyzerListener {
   public class PlaybackBinder extends Binder {
     public PlaybackService GetService() {
       return PlaybackService.this;
     }
   }
   
-  public interface VisualizerListener {
-    void UpdateFft(int[] amplitudes);
-  }
-
   private static final String TAG = "PlaybackService";
   
   private List<MediaPlayer.StateListener> stream_listeners_;
-  private List<VisualizerListener> visualizer_listeners_;
+  private List<MediaPlayer.AnalyzerListener> analyzer_listeners_;
   private Visualizer current_visualizer_;
   private Stream current_stream_;
   
@@ -47,7 +43,7 @@ public class PlaybackService
   @Override
   public void onCreate() {
     stream_listeners_ = new ArrayList<MediaPlayer.StateListener>();
-    visualizer_listeners_ = new ArrayList<VisualizerListener>();
+    analyzer_listeners_ = new ArrayList<MediaPlayer.AnalyzerListener>();
   }
   
   public void Stop() {
@@ -90,7 +86,7 @@ public class PlaybackService
   }
   
   public void StartNewSong(String url) {
-    SwapStream(new Stream(url));
+    SwapStream(new Stream(url, this));
     current_stream_.FadeIn(kFadeDurationMsec);
     current_stream_.Play();
   }
@@ -129,71 +125,20 @@ public class PlaybackService
     for (MediaPlayer.StateListener listener : stream_listeners_) {
       listener.StreamStateChanged(state, message);
     }
-    
-    if (state == MediaPlayer.State.PLAYING && current_visualizer_ == null &&
-        !visualizer_listeners_.isEmpty()) {
-      CreateVisualizer();
-    }
   }
   
-  private void CreateVisualizer() {
-    current_visualizer_ = current_stream_.CreateVisualizer();
-    if (current_visualizer_ == null) {
-      return;
-    }
-    
-    current_visualizer_.setCaptureSize(kVisualizerCaptureSize);
-    current_visualizer_.setDataCaptureListener(
-        this, kVisualizerUpdateIntervalHz * 1000, false, true);
-    current_visualizer_.setEnabled(true);
+  public void AddAnalyzerListener(MediaPlayer.AnalyzerListener listener) {
+    analyzer_listeners_.add(listener);
   }
   
-  public void AddVisualizerListener(VisualizerListener listener) {
-    visualizer_listeners_.add(listener);
-    
-    if (current_visualizer_ == null &&
-        current_stream_ != null &&
-        current_stream_.current_state() != MediaPlayer.State.PREPARING) {
-      CreateVisualizer();
-    }
+  public void RemoveAnalyzerListener(MediaPlayer.AnalyzerListener listener) {
+    analyzer_listeners_.remove(listener);
   }
   
-  public void RemoveVisualizerListener(VisualizerListener listener) {
-    visualizer_listeners_.remove(listener);
-    
-    if (current_visualizer_ != null && visualizer_listeners_.isEmpty()) {
-      current_visualizer_.release();
-      current_visualizer_ = null;
-    }
-  }
-
   @Override
-  public void onFftDataCapture(
-      Visualizer visualizer, byte[] fft, int sampling_rate) {
-    // The first two bytes in the array are the real components of the first
-    // and last frequency buckets (which we discard), followed by real,
-    // imaginary pairs for the rest of the frequency buckets.
-    if (fft.length <= 2) {
-      return;
+  public void UpdateFft(float[] data) {
+    for (MediaPlayer.AnalyzerListener listener : analyzer_listeners_) {
+      listener.UpdateFft(data);
     }
-    
-    int[] amplitudes = new int[fft.length / 2 - 1];
-    for (int i=0 ; i<amplitudes.length ; ++i) {
-      int fft_index = 2 + i * 2;
-      byte real = fft[fft_index];
-      byte imaginary = fft[fft_index + 1];
-      
-      amplitudes[i] =
-          (int) Math.sqrt(Math.pow(real, 2.0) + Math.pow(imaginary, 2.0));
-    }
-    
-    for (VisualizerListener listener : visualizer_listeners_) {
-      listener.UpdateFft(amplitudes);
-    }
-  }
-
-  @Override
-  public void onWaveFormDataCapture(
-      Visualizer visualizer, byte[] waveform, int samplingRate) {
   }
 }

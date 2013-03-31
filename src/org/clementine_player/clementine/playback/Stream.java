@@ -1,20 +1,14 @@
 package org.clementine_player.clementine.playback;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.clementine_player.gstmediaplayer.MediaPlayer;
+import org.clementine_player.gstmediaplayer.MediaPlayer.AnalyzerListener;
 import org.clementine_player.gstmediaplayer.MediaPlayer.FadeListener;
-import org.clementine_player.gstmediaplayer.MediaPlayer.StateListener;
 import org.clementine_player.gstmediaplayer.MediaPlayer.State;
+import org.clementine_player.gstmediaplayer.MediaPlayer.StateListener;
 
-import android.animation.Animator;
-import android.animation.Animator.AnimatorListener;
-import android.animation.ValueAnimator;
-import android.animation.ValueAnimator.AnimatorUpdateListener;
-import android.media.AudioManager;
-import android.media.audiofx.Visualizer;
 import android.util.Log;
 
 public class Stream implements StateListener, FadeListener {
@@ -31,7 +25,7 @@ public class Stream implements StateListener, FadeListener {
   private int stream_id_;
   private String log_tag_;
   
-  public Stream(String url) {
+  public Stream(String url, AnalyzerListener analyzer_listener) {
     listeners_ = new ArrayList<StateListener>();
     current_state_ = State.PREPARING;
     desired_state_ = State.PAUSED;
@@ -42,7 +36,7 @@ public class Stream implements StateListener, FadeListener {
     
     Log.i(log_tag_, "New stream for " + url);
     
-    player_ = new MediaPlayer(url, this, this);
+    player_ = new MediaPlayer(url, this, this, analyzer_listener);
   }
   
   public void AddListener(StateListener listener) {
@@ -174,12 +168,6 @@ public class Stream implements StateListener, FadeListener {
         player_.FadeVolumeTo(0.0f, duration_msec);
         break;
     }
-  }
-  
-  public Visualizer CreateVisualizer() {
-    return null;
-    // TODO(dsansome): implement session IDs.
-    // return new Visualizer(player_.getAudioSessionId());
   }
   
   public State current_state() {

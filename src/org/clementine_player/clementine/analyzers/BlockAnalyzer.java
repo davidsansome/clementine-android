@@ -25,7 +25,7 @@ public class BlockAnalyzer extends BaseAnalyzer {
   
   private int rows_;
   private int columns_;
-  private int[] row_scale_;
+  private float[] row_scale_;
   private int[] falling_line_;
   private int[] fade_pos_;
   private int[] fade_intensity_;
@@ -48,10 +48,9 @@ public class BlockAnalyzer extends BaseAnalyzer {
     rows_ = (height + block_spacing_) / (block_height_ + block_spacing_);
     columns_ = (width + block_spacing_) / (block_width_ + block_spacing_);
     
-    row_scale_ = new int[rows_ + 1];
+    row_scale_ = new float[rows_ + 1];
     for (int i=0 ; i<rows_ ; ++i) {
-      row_scale_[i] =
-          (int) ((1.0 - Math.log10(i + 1) / Math.log10(rows_ + 1)) * 128);
+      row_scale_[i] = (float) (1.0 - Math.log10(i + 1) / Math.log10(rows_ + 1));
       Log.i(TAG, "Row scale " + i + " is " + row_scale_[i]);
     }
     row_scale_[rows_] = 0;
@@ -59,12 +58,6 @@ public class BlockAnalyzer extends BaseAnalyzer {
     falling_line_ = new int[columns_];
     fade_pos_ = new int[columns_];
     fade_intensity_ = new int[columns_];
-    
-    for (int i=0 ; i<columns_ ; ++i) {
-      falling_line_[i] = 0;
-      fade_pos_[i] = 50;
-      fade_intensity_[i] = 32;
-    }
     
     bar_bitmap_ = CreateBarBitmap();
     fade_bitmaps_ = CreateFadeBitmaps();
@@ -151,7 +144,7 @@ public class BlockAnalyzer extends BaseAnalyzer {
   }
 
   @Override
-  protected void Update(int[] fft, Canvas canvas) {
+  protected void Update(float[] fft, Canvas canvas) {
     final int height = rows_ * (block_height_ + block_spacing_) - block_spacing_;
     
     Rect source_rect = new Rect();

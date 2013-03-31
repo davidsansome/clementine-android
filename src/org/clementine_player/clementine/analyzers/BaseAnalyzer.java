@@ -1,6 +1,7 @@
 package org.clementine_player.clementine.analyzers;
 
 import org.clementine_player.clementine.playback.PlaybackService;
+import org.clementine_player.gstmediaplayer.MediaPlayer;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -11,7 +12,7 @@ import android.view.WindowManager;
 
 public abstract class BaseAnalyzer
     implements SurfaceHolder.Callback,
-               PlaybackService.VisualizerListener {
+               MediaPlayer.AnalyzerListener {
   private static final String TAG = "BaseAnalyzer";
   
   private Thread thread_;
@@ -22,7 +23,7 @@ public abstract class BaseAnalyzer
   private SurfaceHolder holder_;
   
   private Object data_mutex_;
-  private int[] data_;
+  private float[] data_;
   private boolean data_updated_;
   
   private int current_width_;
@@ -126,7 +127,7 @@ public abstract class BaseAnalyzer
   }
   
   @Override
-  public void UpdateFft(int[] data) {
+  public void UpdateFft(float[] data) {
     synchronized (data_mutex_) {
       data_ = data;
       data_updated_ = true;
@@ -135,7 +136,7 @@ public abstract class BaseAnalyzer
   }
   
   protected abstract void SizeChanged(int width, int height);
-  protected abstract void Update(int[] fft, Canvas canvas);
+  protected abstract void Update(float[] fft, Canvas canvas);
   
   protected int update_interval_msec() {
     return 1000 / PlaybackService.kVisualizerUpdateIntervalHz;

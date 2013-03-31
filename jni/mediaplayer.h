@@ -23,6 +23,8 @@
 #include <pthread.h>
 #include <string>
 
+#include "fht.h"
+
 using std::string;
 
 class MediaPlayer {
@@ -30,8 +32,10 @@ class MediaPlayer {
   MediaPlayer(JavaVM* vm,
               JNIEnv* env,
               jobject object,
+              jfieldID analyzer_buffer_field,
               jmethodID state_changed_callback,
               jmethodID fade_finished_callback,
+              jmethodID analyzer_callback,
               const char* url);
 
   void Release(JNIEnv* env);
@@ -59,10 +63,11 @@ class MediaPlayer {
   void ThreadMain();
 
   // Invoked on gstreamer threads.
-  static void ErrorCallback(GstBus* bus, GstMessage* msg, void* self);
-  static void StateChangedCallback(GstBus* bus, GstMessage* msg, void* self);
-  void Error(GstMessage* msg);
-  void StateChanged(GstMessage* msg);
+  static void ErrorCallback(GstBus* bus, GstMessage* msg, MediaPlayer* self);
+  static void StateChangedCallback(GstBus* bus, GstMessage* msg, MediaPlayer* self);
+  static void SourceSetupCallback(GstPipeline* pipeline, GstElement* source, MediaPlayer* self);
+  static void PadAddedCallback(GstElement* decodebin, GstPad* pad, MediaPlayer* self);
+  static bool BufferCallback(GstPad* pad, GstBuffer* buffer, MediaPlayer* self);
 
   // Invoked on our thread.
   static int IdleStartCallback(void* self);
@@ -95,11 +100,15 @@ class MediaPlayer {
   jobject object_;
   jmethodID state_changed_callback_;
   jmethodID fade_finished_callback_;
+  jmethodID analyzer_callback_;
 
   float current_volume_;
   float target_volume_;
   float fade_volume_step_;
   u_int32_t fade_volume_timeout_id_;
+
+  FHT fht_;
+  float* analyzer_buffer_;
 };
 
 #endif // MEDIAPLAYER_H

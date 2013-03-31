@@ -9,8 +9,10 @@
 namespace {
 
 jfieldID sHandleFieldID = NULL;
+jfieldID sAnalyzerBufferFieldID = NULL;
 jmethodID sStateCallbackID = NULL;
 jmethodID sFadeCallbackID = NULL;
+jmethodID sAnalyzerCallbackID = NULL;
 JavaVM* sVm = NULL;
 const char* kClassName = "org/clementine_player/gstmediaplayer/MediaPlayer";
 
@@ -26,8 +28,10 @@ jlong CreateNativeInstance(JNIEnv* env, jobject object, jstring url) {
         sVm,
         env,
         object,
+        sAnalyzerBufferFieldID,
         sStateCallbackID,
         sFadeCallbackID,
+        sAnalyzerCallbackID,
         c_url);
   env->ReleaseStringUTFChars(url, c_url);
 
@@ -78,10 +82,12 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
 
   sVm = vm;
   sHandleFieldID = env->GetFieldID(clazz, "handle_", "J");
+  sAnalyzerBufferFieldID =
+      env->GetFieldID(clazz, "analyzer_buffer_", "Ljava/nio/ByteBuffer;");
   sStateCallbackID =
       env->GetMethodID(clazz, "NativeStateChanged", "(ILjava/lang/String;)V");
-  sFadeCallbackID =
-      env->GetMethodID(clazz, "NativeFadeFinished", "()V");
+  sFadeCallbackID = env->GetMethodID(clazz, "NativeFadeFinished", "()V");
+  sAnalyzerCallbackID = env->GetMethodID(clazz, "NativeAnalyzerReady", "()V");
 
   return JNI_VERSION_1_6;
 }

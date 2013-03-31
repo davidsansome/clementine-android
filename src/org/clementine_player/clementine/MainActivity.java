@@ -25,7 +25,7 @@ import android.widget.Toast;
 public class MainActivity 
     extends FragmentActivity
     implements MediaPlayer.StateListener,
-               PlaybackService.VisualizerListener {
+               MediaPlayer.AnalyzerListener {
   private static final String TAG = "MainActivity";
   
   private ImageButton play_button_;
@@ -43,13 +43,13 @@ public class MainActivity
     public void onServiceConnected(ComponentName name, IBinder binder) {
       playback_service_ = ((PlaybackBinder) binder).GetService();
       playback_service_.AddStreamListener(MainActivity.this);
-      playback_service_.AddVisualizerListener(MainActivity.this);
+      playback_service_.AddAnalyzerListener(MainActivity.this);
     }
 
     @Override
     public void onServiceDisconnected(ComponentName arg0) {
       playback_service_.RemoveStreamListener(MainActivity.this);
-      playback_service_.RemoveVisualizerListener(MainActivity.this);
+      playback_service_.AddAnalyzerListener(MainActivity.this);
       playback_service_ = null;
     }
   };
@@ -163,7 +163,7 @@ public class MainActivity
   }
 
   @Override
-  public void UpdateFft(int[] fft) {
+  public void UpdateFft(float[] fft) {
     analyzer_.UpdateFft(fft);
   }
 }

@@ -15,6 +15,9 @@
    along with Clementine.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <limits>
+
+#include "fht.h"
 #include "mediaplayer.h"
 #include "logging.h"
 #include "scoped_ptr.h"
@@ -25,8 +28,10 @@ const int MediaPlayer::kFadeVolumeIntervalMs = 100;
 MediaPlayer::MediaPlayer(JavaVM* vm,
                          JNIEnv* env,
                          jobject object,
+                         jfieldID analyzer_buffer_field,
                          jmethodID state_changed_callback,
                          jmethodID fade_finished_callback,
+                         jmethodID analyzer_callback,
                          const char* url)
     : url_(url),
       context_(NULL),
@@ -37,14 +42,23 @@ MediaPlayer::MediaPlayer(JavaVM* vm,
       object_(env->NewGlobalRef(object)),
       state_changed_callback_(state_changed_callback),
       fade_finished_callback_(fade_finished_callback),
+      analyzer_callback_(analyzer_callback),
       current_volume_(0.0),
       target_volume_(0.0),
       fade_volume_step_(0.0),
-      fade_volume_timeout_id_(0) {
-  SetState(PREPARING);
+      fade_volume_timeout_id_(0),
+      fht_(8),
+      analyzer_buffer_(new float[fht_.size()]) {
+  // Create a native byte buffer for the analyzer data.
+  env->SetObjectField(
+      object,
+      analyzer_buffer_field,
+      env->NewDirectByteBuffer(analyzer_buffer_, fht_.size() * sizeof(float)));
 
   // Create a context now so it's accessible as soon as the ctor returns.
   context_ = g_main_context_new();
+
+  SetState(PREPARING);
 
   // Start a new thread for the gobject mainloop.
   pthread_create(&thread_, NULL, &MediaPlayer::ThreadMainCallback, this);
@@ -60,6 +74,8 @@ void MediaPlayer::Release(JNIEnv* env) {
 
   // Release the reference to the java object.
   env->DeleteGlobalRef(object_);
+
+  delete[] analyzer_buffer_;
 }
 
 void* MediaPlayer::ThreadMainCallback(void* self) {
@@ -67,12 +83,145 @@ void* MediaPlayer::ThreadMainCallback(void* self) {
   return NULL;
 }
 
-void MediaPlayer::ErrorCallback(GstBus* bus, GstMessage* msg, void* self) {
-  reinterpret_cast<MediaPlayer*>(self)->Error(msg);
+void MediaPlayer::ErrorCallback(
+    GstBus* bus, GstMessage* msg, MediaPlayer* self) {
+  GError* err = NULL;
+  gchar* debug_info = NULL;
+  gst_message_parse_error(msg, &err, &debug_info);
+
+  LOG(ERROR, "%s: %s", GST_OBJECT_NAME (msg->src), err->message);
+
+  g_clear_error(&err);
+  g_free(debug_info);
+  gst_element_set_state(self->pipeline_, GST_STATE_NULL);
 }
 
-void MediaPlayer::StateChangedCallback(GstBus* bus, GstMessage* msg, void* self) {
-  reinterpret_cast<MediaPlayer*>(self)->StateChanged(msg);
+void MediaPlayer::StateChangedCallback(
+    GstBus* bus, GstMessage* msg, MediaPlayer* self) {
+  GstState old_state;
+  GstState new_state;
+  GstState pending_state;
+  gst_message_parse_state_changed(msg, &old_state, &new_state, &pending_state);
+
+  // Only pay attention to messages coming from the pipeline, not its children.
+  if (GST_MESSAGE_SRC(msg) == GST_OBJECT(self->pipeline_)) {
+    LOG(DEBUG, "Pipeline state %s -> %s",
+        gst_element_state_get_name(old_state),
+        gst_element_state_get_name(new_state));
+
+    State my_state = PREPARING;
+    switch (new_state) {
+      case GST_STATE_READY:
+      case GST_STATE_VOID_PENDING: my_state = PREPARING; break;
+      case GST_STATE_NULL:         my_state = COMPLETED; break;
+      case GST_STATE_PAUSED:       my_state = PAUSED; break;
+      case GST_STATE_PLAYING:      my_state = PLAYING; break;
+    }
+
+    self->SetState(my_state);
+  }
+}
+
+void MediaPlayer::SourceSetupCallback(
+    GstPipeline* pipeline, GstElement* source, MediaPlayer* self) {
+  GstElement* uridecodebin = reinterpret_cast<GstElement*>(
+      pipeline->bin.children->data);
+
+  g_signal_connect(
+      G_OBJECT(uridecodebin),
+      "pad-added",
+      reinterpret_cast<GCallback>(&MediaPlayer::PadAddedCallback),
+      self);
+}
+
+void MediaPlayer::PadAddedCallback(
+    GstElement* decodebin, GstPad* pad, MediaPlayer* self) {
+  if (gst_pad_get_direction(pad) == GST_PAD_SRC) {
+    gst_pad_add_buffer_probe(
+        pad,
+        reinterpret_cast<GCallback>(&MediaPlayer::BufferCallback),
+        self);
+  }
+}
+
+namespace {
+
+template <typename T>
+void CopyBufferData(
+    const GstBuffer* buffer, int samples, int channels, float* out) {
+  T* in_p = reinterpret_cast<T*>(buffer->data);
+  float* out_p = out;
+
+  const float divisor = float(channels) * std::numeric_limits<T>::max();
+
+  for (int i=0 ; i<samples ; ++i) {
+    float value = 0;
+    for (int j=0 ; j<channels ; ++j) {
+      value += *(in_p++);
+    }
+    *(out_p++) = value / divisor;
+  }
+}
+
+}
+
+bool MediaPlayer::BufferCallback(
+    GstPad* pad, GstBuffer* buffer, MediaPlayer* self) {
+  if (!buffer || !buffer->caps || !buffer->caps->structs ||
+      buffer->caps->structs->len < 1) {
+    return false;
+  }
+
+  const int size_bytes = buffer->size;
+  const GstStructure* structure = reinterpret_cast<GstStructure*>(
+      buffer->caps->structs->pdata[0]);
+
+  int width_bits = 0;
+  int depth_bits = 0;
+  int channels = 0;
+  if (!gst_structure_get_int(structure, "width", &width_bits) ||
+      !gst_structure_get_int(structure, "depth", &depth_bits) ||
+      !gst_structure_get_int(structure, "channels", &channels)) {
+    char* structure_string = gst_structure_to_string(structure);
+    LOG(ERROR,
+        "Failed to get width, depth or channel information from caps "
+        "structure: %s",
+        structure_string);
+    free(structure_string);
+    return false;
+  }
+
+  const int samples = size_bytes / (channels * (width_bits / 8));
+  if (samples < self->fht_.size()) {
+    LOG(ERROR, "Buffer (%d) too small for FHT (%d)", samples, self->fht_.size());
+    return false;
+  }
+
+  float* data = self->analyzer_buffer_;
+  const int data_size = self->fht_.size();
+
+  switch (width_bits) {
+    case 8:  CopyBufferData<u_int8_t>(buffer, data_size, channels, data); break;
+    case 16: CopyBufferData<u_int16_t>(buffer, data_size, channels, data); break;
+    case 32: CopyBufferData<u_int32_t>(buffer, data_size, channels, data); break;
+    default:
+      LOG(ERROR, "Buffer width %d not supported", width_bits);
+      return false;
+  }
+
+  self->fht_.spectrum(data);
+  self->fht_.scale(data, 0.05);
+
+  // TODO(dsansome): put this in a thread local.
+  JNIEnv* env = NULL;
+  if (self->vm_->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
+    LOG(WARN, "MediaPlayer::BufferCallback - thread is not attached to the JVM");
+    return false;
+  }
+
+  env->CallVoidMethod(self->object_, self->analyzer_callback_);
+
+  return true;
 }
 
 void MediaPlayer::ThreadMain(void) {
@@ -133,6 +282,12 @@ void MediaPlayer::ThreadMain(void) {
       this);
   gst_object_unref(bus);
 
+  g_signal_connect(
+      G_OBJECT(pipeline_),
+      "source-setup",
+      reinterpret_cast<GCallback>(&MediaPlayer::SourceSetupCallback),
+      this);
+
   // Preroll and pause the pipeline.
   gst_element_set_state(pipeline_, GST_STATE_PAUSED);
 
@@ -148,43 +303,6 @@ void MediaPlayer::ThreadMain(void) {
   gst_object_unref(pipeline_);
 
   vm_->DetachCurrentThread();
-}
-
-void MediaPlayer::Error(GstMessage* msg) {
-  GError* err = NULL;
-  gchar* debug_info = NULL;
-  gst_message_parse_error(msg, &err, &debug_info);
-
-  LOG(ERROR, "%s: %s", GST_OBJECT_NAME (msg->src), err->message);
-
-  g_clear_error(&err);
-  g_free(debug_info);
-  gst_element_set_state(pipeline_, GST_STATE_NULL);
-}
-
-void MediaPlayer::StateChanged(GstMessage* msg) {
-  GstState old_state;
-  GstState new_state;
-  GstState pending_state;
-  gst_message_parse_state_changed(msg, &old_state, &new_state, &pending_state);
-
-  // Only pay attention to messages coming from the pipeline, not its children.
-  if (GST_MESSAGE_SRC(msg) == GST_OBJECT(pipeline_)) {
-    LOG(DEBUG, "Pipeline state %s -> %s",
-        gst_element_state_get_name(old_state),
-        gst_element_state_get_name(new_state));
-
-    State my_state = PREPARING;
-    switch (new_state) {
-      case GST_STATE_READY:
-      case GST_STATE_VOID_PENDING: my_state = PREPARING; break;
-      case GST_STATE_NULL:         my_state = COMPLETED; break;
-      case GST_STATE_PAUSED:       my_state = PAUSED; break;
-      case GST_STATE_PLAYING:      my_state = PLAYING; break;
-    }
-
-    SetState(my_state);
-  }
 }
 
 void MediaPlayer::SetState(State state, const char* message) {
