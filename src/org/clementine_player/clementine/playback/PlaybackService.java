@@ -20,7 +20,7 @@ import android.util.Log;
 
 public class PlaybackService
     extends Service
-    implements MediaPlayer.Listener,
+    implements MediaPlayer.StateListener,
                Visualizer.OnDataCaptureListener {
   public class PlaybackBinder extends Binder {
     public PlaybackService GetService() {
@@ -34,7 +34,7 @@ public class PlaybackService
 
   private static final String TAG = "PlaybackService";
   
-  private List<MediaPlayer.Listener> stream_listeners_;
+  private List<MediaPlayer.StateListener> stream_listeners_;
   private List<VisualizerListener> visualizer_listeners_;
   private Visualizer current_visualizer_;
   private Stream current_stream_;
@@ -46,7 +46,7 @@ public class PlaybackService
   
   @Override
   public void onCreate() {
-    stream_listeners_ = new ArrayList<MediaPlayer.Listener>();
+    stream_listeners_ = new ArrayList<MediaPlayer.StateListener>();
     visualizer_listeners_ = new ArrayList<VisualizerListener>();
   }
   
@@ -116,17 +116,17 @@ public class PlaybackService
     }
   }
   
-  public void AddStreamListener(MediaPlayer.Listener listener) {
+  public void AddStreamListener(MediaPlayer.StateListener listener) {
     stream_listeners_.add(listener);
   }
   
-  public void RemoveStreamListener(MediaPlayer.Listener listener) {
+  public void RemoveStreamListener(MediaPlayer.StateListener listener) {
     stream_listeners_.remove(listener);
   }
 
   @Override
   public void StreamStateChanged(MediaPlayer.State state, String message) {
-    for (MediaPlayer.Listener listener : stream_listeners_) {
+    for (MediaPlayer.StateListener listener : stream_listeners_) {
       listener.StreamStateChanged(state, message);
     }
     

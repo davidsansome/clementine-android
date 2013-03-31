@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.clementine_player.gstmediaplayer.MediaPlayer;
-import org.clementine_player.gstmediaplayer.MediaPlayer.Listener;
+import org.clementine_player.gstmediaplayer.MediaPlayer.FadeListener;
+import org.clementine_player.gstmediaplayer.MediaPlayer.StateListener;
 import org.clementine_player.gstmediaplayer.MediaPlayer.State;
 
 import android.animation.Animator;
@@ -16,46 +17,45 @@ import android.media.AudioManager;
 import android.media.audiofx.Visualizer;
 import android.util.Log;
 
-public class Stream implements Listener {
+public class Stream implements StateListener, FadeListener {
   private MediaPlayer player_;
   private State current_state_;
   private State desired_state_;
-  private List<Listener> listeners_;
+  private List<StateListener> listeners_;
   
-  private float current_volume_;
   private boolean fade_in_desired_;
   private long fade_duration_msec_;
-  private ValueAnimator volume_fader_;
+  private boolean release_after_fade_;
   
   private static int next_stream_id_ = 0;
   private int stream_id_;
   private String log_tag_;
   
   public Stream(String url) {
-    listeners_ = new ArrayList<Listener>();
+    listeners_ = new ArrayList<StateListener>();
     current_state_ = State.PREPARING;
     desired_state_ = State.PAUSED;
-    current_volume_ = 1.0f;
+    release_after_fade_ = false;
     
     stream_id_ = next_stream_id_ ++;
     log_tag_ = "Stream(" + stream_id_ + ")";
     
     Log.i(log_tag_, "New stream for " + url);
     
-    player_ = new MediaPlayer(url, this);
+    player_ = new MediaPlayer(url, this, this);
   }
   
-  public void AddListener(Listener listener) {
+  public void AddListener(StateListener listener) {
     listeners_.add(listener);
     listener.StreamStateChanged(current_state_, null);
   }
   
-  public void RemoveListener(Listener listener) {
+  public void RemoveListener(StateListener listener) {
     listeners_.remove(listener);
   }
   
   private void UpdateAllListeners(String message) {
-    for (Listener listener : listeners_) {
+    for (StateListener listener : listeners_) {
       listener.StreamStateChanged(current_state_, message);
     }
   }
@@ -83,7 +83,7 @@ public class Stream implements Listener {
             
             if (fade_in_desired_) {
               fade_in_desired_ = false;
-              FadeTo(1.0f, fade_duration_msec_);
+              player_.FadeVolumeTo(1.0f, fade_duration_msec_);
             }
             break;
           default:
@@ -115,7 +115,7 @@ public class Stream implements Listener {
         
         if (fade_in_desired_) {
           fade_in_desired_ = false;
-          FadeTo(1.0f, fade_duration_msec_);
+          player_.FadeVolumeTo(1.0f, fade_duration_msec_);
         }
         break;
     }
@@ -150,51 +150,7 @@ public class Stream implements Listener {
     }
   }
   
-  private void FadeTo(final float target_volume, long duration_msec) {
-    if (player_ == null) {
-      return;
-    }
-    
-    Log.d(log_tag_, "Fading volume from " + current_volume_ +
-                    " to " + target_volume + " over " + duration_msec + "ms");
-    
-    if (volume_fader_ != null) {
-      volume_fader_.cancel();
-      volume_fader_ = null;
-    }
-    
-    volume_fader_ = ValueAnimator.ofFloat(current_volume_, target_volume);
-    volume_fader_.setDuration(duration_msec);
-    volume_fader_.addListener(new AnimatorListener() {
-      @Override public void onAnimationStart(Animator animation) {}
-      @Override public void onAnimationRepeat(Animator animation) {}
-      @Override public void onAnimationEnd(Animator animation) {Finished();}
-      @Override public void onAnimationCancel(Animator animation) {Finished();}
-      
-      private void Finished() {
-        volume_fader_ = null;
-        
-        Log.d(log_tag_, "Fading volume finished");
-        
-        if (target_volume == 0.0f) {
-          Release();
-        }
-      }
-    });
-    volume_fader_.addUpdateListener(new AnimatorUpdateListener() {
-      @Override
-      public void onAnimationUpdate(ValueAnimator animator) {
-        if (player_ != null) {
-          current_volume_ = (Float) animator.getAnimatedValue();
-          player_.SetVolume(current_volume_);
-        }
-      }
-    });
-    volume_fader_.start();
-  }
-  
   public void FadeIn(long duration_msec) {
-    current_volume_ = 0.0f;
     switch (current_state_) {
       case PREPARING:
       case PAUSED:
@@ -202,7 +158,7 @@ public class Stream implements Listener {
         fade_duration_msec_ = duration_msec;
         break;
       case PLAYING:
-        FadeTo(1.0f, duration_msec);
+        player_.FadeVolumeTo(1.0f, duration_msec);
         break;
     }
   }
@@ -214,7 +170,8 @@ public class Stream implements Listener {
         Release();
         break;
       case PLAYING:
-        FadeTo(0.0f, duration_msec);
+        release_after_fade_ = true;
+        player_.FadeVolumeTo(0.0f, duration_msec);
         break;
     }
   }
@@ -227,5 +184,12 @@ public class Stream implements Listener {
   
   public State current_state() {
     return current_state_;
+  }
+
+  @Override
+  public void FadeFinished() {
+    if (release_after_fade_) {
+      Release();
+    }
   }
 }

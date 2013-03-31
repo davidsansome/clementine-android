@@ -17,11 +17,16 @@
 
 #include "mediaplayer.h"
 #include "logging.h"
+#include "scoped_ptr.h"
+
+const int MediaPlayer::kFadeVolumeIntervalMs = 100;
+
 
 MediaPlayer::MediaPlayer(JavaVM* vm,
                          JNIEnv* env,
                          jobject object,
                          jmethodID state_changed_callback,
+                         jmethodID fade_finished_callback,
                          const char* url)
     : url_(url),
       context_(NULL),
@@ -30,7 +35,12 @@ MediaPlayer::MediaPlayer(JavaVM* vm,
       vm_(vm),
       env_(NULL),
       object_(env->NewGlobalRef(object)),
-      state_changed_callback_(state_changed_callback) {
+      state_changed_callback_(state_changed_callback),
+      fade_finished_callback_(fade_finished_callback),
+      current_volume_(0.0),
+      target_volume_(0.0),
+      fade_volume_step_(0.0),
+      fade_volume_timeout_id_(0) {
   SetState(PREPARING);
 
   // Create a context now so it's accessible as soon as the ctor returns.
@@ -95,8 +105,11 @@ void MediaPlayer::ThreadMain(void) {
     return;
   }
 
-  // Set the media URI.
-  g_object_set(pipeline_, "uri", url_.c_str(), NULL);
+  // Set the pipeline properties.
+  g_object_set(pipeline_,
+               "uri", url_.c_str(),
+               "volume", gdouble(0.0),
+               NULL);
 
   // Connect to interesting signals on the bus.
   GstBus* bus = gst_element_get_bus(pipeline_);
@@ -157,11 +170,15 @@ void MediaPlayer::StateChanged(GstMessage* msg) {
 
   // Only pay attention to messages coming from the pipeline, not its children.
   if (GST_MESSAGE_SRC(msg) == GST_OBJECT(pipeline_)) {
+    LOG(DEBUG, "Pipeline state %s -> %s",
+        gst_element_state_get_name(old_state),
+        gst_element_state_get_name(new_state));
+
     State my_state = PREPARING;
     switch (new_state) {
+      case GST_STATE_READY:
       case GST_STATE_VOID_PENDING: my_state = PREPARING; break;
       case GST_STATE_NULL:         my_state = COMPLETED; break;
-      case GST_STATE_READY:
       case GST_STATE_PAUSED:       my_state = PAUSED; break;
       case GST_STATE_PLAYING:      my_state = PLAYING; break;
     }
@@ -216,4 +233,93 @@ int MediaPlayer::IdleExitCallback(void* self) {
 }
 
 void MediaPlayer::SetVolume(float volume) {
+  SetVolumeArgs* args = new SetVolumeArgs;
+  args->self = this;
+  args->volume = volume;
+  args->duration_ms = 0;
+
+  LOG(INFO, "Setting volume to %f", volume);
+  g_main_context_invoke(context_, &MediaPlayer::IdleSetVolume, args);
+}
+
+void MediaPlayer::FadeVolumeTo(float volume, int64_t duration_ms) {
+  SetVolumeArgs* args = new SetVolumeArgs;
+  args->self = this;
+  args->volume = volume;
+  args->duration_ms = duration_ms;
+
+  g_main_context_invoke(context_, &MediaPlayer::IdleFadeVolumeTo, args);
+}
+
+int MediaPlayer::IdleSetVolume(void* args_vp) {
+  scoped_ptr<SetVolumeArgs> args(reinterpret_cast<SetVolumeArgs*>(args_vp));
+
+  // Cancel a fade if there's one ongoing.
+  if (args->self->fade_volume_timeout_id_) {
+    g_source_remove(args->self->fade_volume_timeout_id_);
+    args->self->fade_volume_timeout_id_ = 0;
+  }
+
+  args->self->current_volume_ = args->volume;
+  g_object_set(args->self->pipeline_,
+               "volume", gdouble(args->self->current_volume_),
+               NULL);
+
+  return 0;
+}
+
+int MediaPlayer::IdleFadeVolumeTo(void* args_vp) {
+  scoped_ptr<SetVolumeArgs> args(reinterpret_cast<SetVolumeArgs*>(args_vp));
+
+  // Cancel a fade if there's one ongoing.
+  if (args->self->fade_volume_timeout_id_) {
+    g_source_remove(args->self->fade_volume_timeout_id_);
+    args->self->fade_volume_timeout_id_ = 0;
+    LOG(INFO, "Aborting existing fade");
+  }
+
+  // Don't start fading if we're already at the target volume.
+  if (args->self->target_volume_ == args->volume) {
+    return 0;
+  }
+
+  args->self->target_volume_ = args->volume;
+  args->self->fade_volume_step_ =
+      (args->volume - args->self->current_volume_) /
+      (args->duration_ms / kFadeVolumeIntervalMs);
+
+  LOG(INFO, "Fading volume to %f over %dms step %f",
+      args->volume, args->duration_ms, args->self->fade_volume_step_);
+
+  GSource* source = g_timeout_source_new(kFadeVolumeIntervalMs);
+  g_source_set_callback(source, &MediaPlayer::FadeVolumeTimeout, args->self, NULL);
+  args->self->fade_volume_timeout_id_ =
+      g_source_attach(source, args->self->context_);
+
+  return 0;
+}
+
+int MediaPlayer::FadeVolumeTimeout(void* self_vp) {
+  MediaPlayer* self = reinterpret_cast<MediaPlayer*>(self_vp);
+
+  int ret = 1;
+  float volume = self->current_volume_ + self->fade_volume_step_;
+
+  LOG(DEBUG, "Fade changing volume to %f", volume);
+
+  // Have we finished fading?
+  if ((self->fade_volume_step_ > 0 && volume >= self->target_volume_) ||
+      (self->fade_volume_step_ < 0 && volume <= self->target_volume_)) {
+    volume = self->target_volume_;
+    ret = 0;
+    self->fade_volume_timeout_id_ = 0;
+
+    LOG(INFO, "Fade finished");
+    self->env_->CallVoidMethod(self->object_, self->fade_finished_callback_);
+  }
+
+  self->current_volume_ = volume;
+  g_object_set(self->pipeline_, "volume", gdouble(self->current_volume_), NULL);
+
+  return ret;
 }

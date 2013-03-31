@@ -19,8 +19,12 @@ public class MediaPlayer {
   };
   private static final State[] kStateValues = State.values();
  
-  public interface Listener {
+  public interface StateListener {
     public void StreamStateChanged(State state, String message);
+  }
+  
+  public interface FadeListener {
+    public void FadeFinished();
   }
   
   private native long CreateNativeInstance(String url);
@@ -29,6 +33,7 @@ public class MediaPlayer {
   public native void Start();
   public native void Pause();
   public native void SetVolume(float volume);
+  public native void FadeVolumeTo(float volume, long duration_ms);
   
   static {
     System.loadLibrary("gstreamer_android");
@@ -47,10 +52,15 @@ public class MediaPlayer {
   // A pointer to the native instance.
   private long handle_ = 0;
   
-  private Listener listener_;
+  private StateListener state_listener_;
+  private FadeListener fade_listener_;
   
-  public MediaPlayer(String url, Listener listener) {
-    listener_ = listener;
+  public MediaPlayer(
+      String url,
+      StateListener state_listener,
+      FadeListener fade_listener) {
+    state_listener_ = state_listener;
+    fade_listener_ = fade_listener;
     handle_ = CreateNativeInstance(url);
   }
   
@@ -71,7 +81,16 @@ public class MediaPlayer {
     Application.instance().RunOnUiThread(new Runnable() {
       @Override
       public void run() {
-        listener_.StreamStateChanged(kStateValues[state], message);
+        state_listener_.StreamStateChanged(kStateValues[state], message);
+      }
+    });
+  }
+  
+  private void NativeFadeFinished() {
+    Application.instance().RunOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        fade_listener_.FadeFinished();
       }
     });
   }

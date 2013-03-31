@@ -31,6 +31,7 @@ class MediaPlayer {
               JNIEnv* env,
               jobject object,
               jmethodID state_changed_callback,
+              jmethodID fade_finished_callback,
               const char* url);
 
   void Release(JNIEnv* env);
@@ -39,6 +40,7 @@ class MediaPlayer {
   void Start();
   void Pause();
   void SetVolume(float volume);
+  void FadeVolumeTo(float volume, int64_t duration_ms);
 
   // Must be kept in sync with MediaPlayer.java
   enum State {
@@ -50,6 +52,8 @@ class MediaPlayer {
   };
 
  private:
+  static const int kFadeVolumeIntervalMs;
+
   // Our thread's main function.
   static void* ThreadMainCallback(void* self);
   void ThreadMain();
@@ -65,16 +69,18 @@ class MediaPlayer {
   static int IdlePauseCallback(void* self);
   static int IdleExitCallback(void* self);
 
+  struct SetVolumeArgs {
+    MediaPlayer* self;
+    float volume;
+    int64_t duration_ms;
+  };
+  static int IdleSetVolume(void* args);
+  static int IdleFadeVolumeTo(void* args);
+
+  static int FadeVolumeTimeout(void* self);
+
   // Can be invoked from any thread attached to the JVM.
   void SetState(State state, const char* message = NULL);
-
-  // Internal helpers for SetState to call itself on the right thread.
-  struct SetStateArgs {
-    MediaPlayer* self;
-    char* message;
-    State state;
-  };
-  static int IdleSetStateCallback(void* args);
 
  private:
   string url_;
@@ -88,6 +94,12 @@ class MediaPlayer {
   JNIEnv* env_;
   jobject object_;
   jmethodID state_changed_callback_;
+  jmethodID fade_finished_callback_;
+
+  float current_volume_;
+  float target_volume_;
+  float fade_volume_step_;
+  u_int32_t fade_volume_timeout_id_;
 };
 
 #endif // MEDIAPLAYER_H

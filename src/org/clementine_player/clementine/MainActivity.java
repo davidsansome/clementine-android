@@ -24,7 +24,7 @@ import android.widget.Toast;
 
 public class MainActivity 
     extends FragmentActivity
-    implements MediaPlayer.Listener,
+    implements MediaPlayer.StateListener,
                PlaybackService.VisualizerListener {
   private static final String TAG = "MainActivity";
   
