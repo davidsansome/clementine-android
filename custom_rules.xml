@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="custom_rules" default="help">
-  <target name="-pre-build">
+  <target name="-pre-compile">
     <exec executable="protoc">
       <arg value="--java_out=gen" />
       <arg value="--proto_path=src" />
