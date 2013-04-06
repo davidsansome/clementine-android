@@ -1,7 +1,6 @@
 package org.clementine_player.clementine.playlist_parsers;
 
 import java.io.BufferedInputStream;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;

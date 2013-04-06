@@ -1,7 +1,5 @@
 package org.clementine_player.clementine;
 
-import java.net.URI;
-
 import org.clementine_player.clementine.playback.PlaybackService;
 import org.clementine_player.clementine.playback.PlaybackService.PlaybackBinder;
 import org.clementine_player.clementine.playlist.PlaylistAdapter;

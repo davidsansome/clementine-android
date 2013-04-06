@@ -2,7 +2,6 @@ package org.clementine_player.clementine.providers.di;
 
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 

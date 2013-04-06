@@ -7,10 +7,8 @@ import org.clementine_player.clementine.PB;
 
 import android.content.Context;
 import android.database.DataSetObserver;
-import android.graphics.Color;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Adapter;
 import android.widget.ListAdapter;
 
 public class PlaylistAdapter implements ListAdapter {

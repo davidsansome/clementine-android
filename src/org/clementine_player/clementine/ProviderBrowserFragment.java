@@ -1,25 +1,15 @@
 package org.clementine_player.clementine;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-
-import org.clementine_player.clementine.playback.PlaybackService;
-import org.clementine_player.clementine.playback.PlaybackService.PlaybackBinder;
 import org.clementine_player.clementine.providers.ProviderInterface;
 
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.app.ListFragment;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.Loader;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -163,8 +153,6 @@ public class ProviderBrowserFragment
   @Override
   public void onLoaderReset(Loader<PB.BrowserItemList> loader) {
   }
-  
-  private ServiceConnection connection_;
   
   @Override
   public void onListItemClick(ListView l, View v, int position, long id) {

@@ -93,6 +93,8 @@ public class Stream implements StateListener, FadeListener {
         SetCurrentState(state, message);
         Release();
         break;
+      default:
+        break;
     }
   }
 
@@ -121,6 +123,7 @@ public class Stream implements StateListener, FadeListener {
       case PREPARING:
       case PAUSED:
       case COMPLETED:
+      default:
         break;
       case PLAYING:
         player_.Pause();
@@ -154,6 +157,8 @@ public class Stream implements StateListener, FadeListener {
       case PLAYING:
         player_.FadeVolumeTo(1.0f, duration_msec);
         break;
+      default:
+        break;
     }
   }
   
@@ -166,6 +171,8 @@ public class Stream implements StateListener, FadeListener {
       case PLAYING:
         release_after_fade_ = true;
         player_.FadeVolumeTo(0.0f, duration_msec);
+        break;
+      default:
         break;
     }
   }

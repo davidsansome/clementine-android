@@ -3,7 +3,6 @@ package org.clementine_player.clementine.analyzers;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.clementine_player.clementine.playback.PlaybackService;
 import org.clementine_player.gstmediaplayer.MediaPlayer;
 
 import android.content.Context;
