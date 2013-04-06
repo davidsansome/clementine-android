@@ -1,6 +1,5 @@
 package org.clementine_player.clementine.playback;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.clementine_player.gstmediaplayer.MediaPlayer;
@@ -10,6 +9,8 @@ import org.clementine_player.gstmediaplayer.MediaPlayer.State;
 import org.clementine_player.gstmediaplayer.MediaPlayer.StateListener;
 
 import android.util.Log;
+
+import com.google.common.collect.Lists;
 
 public class Stream implements StateListener, FadeListener {
   private MediaPlayer player_;
@@ -26,7 +27,7 @@ public class Stream implements StateListener, FadeListener {
   private String log_tag_;
   
   public Stream(String url, AnalyzerListener analyzer_listener) {
-    listeners_ = new ArrayList<StateListener>();
+    listeners_ = Lists.newArrayList();
     current_state_ = State.PREPARING;
     desired_state_ = State.PAUSED;
     release_after_fade_ = false;

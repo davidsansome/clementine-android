@@ -4,7 +4,6 @@ import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -14,6 +13,8 @@ import org.clementine_player.clementine.PB.Song;
 import org.clementine_player.clementine.TimeConstants;
 
 import android.util.SparseArray;
+
+import com.google.common.collect.ImmutableList;
 
 public class PlsParser extends BaseParser {
   private static final String TAG = "PlsParser";
@@ -86,11 +87,11 @@ public class PlsParser extends BaseParser {
       }
     }
     
-    List<Song> ret = new ArrayList<Song>();
-    for (int i=0 ; i<songs.size() ; ++i) {
+    ImmutableList.Builder<Song> ret = ImmutableList.builder();
+    for (int i = 0 ; i < songs.size(); ++i) {
       ret.add(songs.valueAt(i).build());
     }
-    return ret;
+    return ret.build();
   }
   
   @Override

@@ -3,7 +3,6 @@ package org.clementine_player.clementine.playback;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.clementine_player.clementine.Application;
@@ -16,6 +15,8 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.support.v4.content.Loader;
 import android.support.v4.content.Loader.OnLoadCompleteListener;
+
+import com.google.common.collect.Lists;
 
 public class PlaybackService
     extends Service
@@ -38,8 +39,8 @@ public class PlaybackService
   
   @Override
   public void onCreate() {
-    stream_listeners_ = new ArrayList<MediaPlayer.StateListener>();
-    analyzer_listeners_ = new ArrayList<MediaPlayer.AnalyzerListener>();
+    stream_listeners_ = Lists.newArrayList();
+    analyzer_listeners_ = Lists.newArrayList();
     
     startService(new Intent(this, getClass()));
   }

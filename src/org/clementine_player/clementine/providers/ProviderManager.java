@@ -2,8 +2,6 @@ package org.clementine_player.clementine.providers;
 
 import java.net.URI;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,15 +18,18 @@ import org.clementine_player.clementine.providers.mediastore.MediaStoreProvider;
 import android.content.Context;
 import android.support.v4.content.Loader;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
 public class ProviderManager implements ProviderInterface {
   private List<ProviderInterface> providers_;
   private Map<String, ProviderInterface> providers_by_type_;
   private Map<String, ProviderInterface> providers_by_uri_scheme_;
   
   public ProviderManager() {
-    providers_ = new ArrayList<ProviderInterface>();
-    providers_by_type_ = new HashMap<String, ProviderInterface>();
-    providers_by_uri_scheme_ = new HashMap<String, ProviderInterface>();
+    providers_ = Lists.newArrayList();
+    providers_by_type_ = Maps.newHashMap();
+    providers_by_uri_scheme_ = Maps.newHashMap();
     
     AddProvider(new MediaStoreProvider());
     AddProvider(new DigitallyImportedProvider());

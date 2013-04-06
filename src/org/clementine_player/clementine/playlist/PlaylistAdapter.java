@@ -1,6 +1,5 @@
 package org.clementine_player.clementine.playlist;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.clementine_player.clementine.PB;
@@ -10,6 +9,8 @@ import android.database.DataSetObserver;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListAdapter;
+
+import com.google.common.collect.Lists;
 
 public class PlaylistAdapter implements ListAdapter {
   private class Item {
@@ -31,8 +32,8 @@ public class PlaylistAdapter implements ListAdapter {
     columns_ = columns;
     context_ = context;
     
-    items_ = new ArrayList<Item>();
-    observers_ = new ArrayList<DataSetObserver>();
+    items_ = Lists.newArrayList();
+    observers_ = Lists.newArrayList();
     next_id_ = 0;
   }
 

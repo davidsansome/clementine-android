@@ -3,12 +3,14 @@ package org.clementine_player.clementine.playlist_parsers;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.clementine_player.clementine.PB.Song;
 
 import android.util.Log;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 public class ParserManager {
   private static final int MAGIC_SIZE = 512;
@@ -17,7 +19,7 @@ public class ParserManager {
   private List<BaseParser> parsers_;
   
   public ParserManager() {
-    parsers_ = new ArrayList<BaseParser>();
+    parsers_ = Lists.newArrayList();
     
     AddParser(new PlsParser());
   }
@@ -48,7 +50,7 @@ public class ParserManager {
     
     BaseParser parser = ParserForMagic(new String(magic_bytes));
     if (parser == null) {
-      return new ArrayList<Song>();
+      return ImmutableList.of();
     }
     
     return parser.Load(buffered_stream, path_hint, dir_hint);
