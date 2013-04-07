@@ -13,6 +13,7 @@ import org.clementine_player.clementine.providers.di.DigitallyImportedProvider;
 import org.clementine_player.clementine.providers.di.JazzRadioProvider;
 import org.clementine_player.clementine.providers.di.RockRadioProvider;
 import org.clementine_player.clementine.providers.di.SkyFmProvider;
+import org.clementine_player.clementine.providers.google_drive.GoogleDriveProvider;
 import org.clementine_player.clementine.providers.mediastore.MediaStoreProvider;
 
 import android.content.Context;
@@ -36,6 +37,7 @@ public class ProviderManager implements ProviderInterface {
     AddProvider(new SkyFmProvider());
     AddProvider(new JazzRadioProvider());
     AddProvider(new RockRadioProvider());
+    AddProvider(new GoogleDriveProvider());
   }
   
   private void AddProvider(ProviderInterface instance) {
